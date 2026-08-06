@@ -2,6 +2,7 @@
 #'
 #' @useDynLib imply, .registration = TRUE
 #' @importFrom Rcpp sourceCpp
+#' @importFrom methods setMethod
 "_PACKAGE"
 
 ## S7 methods defined at the top level of a package are recorded but not
@@ -10,4 +11,5 @@
 .onLoad <- function (libname, pkgname)
 {
     S7::methods_register()
+    registerSparseMethods()
 }

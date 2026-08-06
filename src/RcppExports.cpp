@@ -207,6 +207,124 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// denseToSparse
+Rcpp::List denseToSparse(Rcpp::RObject x, Rcpp::Nullable<Rcpp::IntegerVector> spatial);
+RcppExport SEXP _imply_denseToSparse(SEXP xSEXP, SEXP spatialSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::RObject >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::IntegerVector> >::type spatial(spatialSEXP);
+    rcpp_result_gen = Rcpp::wrap(denseToSparse(x, spatial));
+    return rcpp_result_gen;
+END_RCPP
+}
+// sparseToDense
+SEXP sparseToDense(Rcpp::RawVector mask, Rcpp::RObject values, Rcpp::IntegerVector dim, int spatial);
+RcppExport SEXP _imply_sparseToDense(SEXP maskSEXP, SEXP valuesSEXP, SEXP dimSEXP, SEXP spatialSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::RawVector >::type mask(maskSEXP);
+    Rcpp::traits::input_parameter< Rcpp::RObject >::type values(valuesSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type dim(dimSEXP);
+    Rcpp::traits::input_parameter< int >::type spatial(spatialSEXP);
+    rcpp_result_gen = Rcpp::wrap(sparseToDense(mask, values, dim, spatial));
+    return rcpp_result_gen;
+END_RCPP
+}
+// sparseElements
+SEXP sparseElements(Rcpp::RawVector mask, Rcpp::RObject values, Rcpp::IntegerVector dim, int spatial, Rcpp::NumericVector indices);
+RcppExport SEXP _imply_sparseElements(SEXP maskSEXP, SEXP valuesSEXP, SEXP dimSEXP, SEXP spatialSEXP, SEXP indicesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::RawVector >::type mask(maskSEXP);
+    Rcpp::traits::input_parameter< Rcpp::RObject >::type values(valuesSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type dim(dimSEXP);
+    Rcpp::traits::input_parameter< int >::type spatial(spatialSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type indices(indicesSEXP);
+    rcpp_result_gen = Rcpp::wrap(sparseElements(mask, values, dim, spatial, indices));
+    return rcpp_result_gen;
+END_RCPP
+}
+// maskCount
+double maskCount(Rcpp::RawVector mask, double locations);
+RcppExport SEXP _imply_maskCount(SEXP maskSEXP, SEXP locationsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::RawVector >::type mask(maskSEXP);
+    Rcpp::traits::input_parameter< double >::type locations(locationsSEXP);
+    rcpp_result_gen = Rcpp::wrap(maskCount(mask, locations));
+    return rcpp_result_gen;
+END_RCPP
+}
+// maskToLogical
+Rcpp::LogicalVector maskToLogical(Rcpp::RawVector mask, double locations);
+RcppExport SEXP _imply_maskToLogical(SEXP maskSEXP, SEXP locationsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::RawVector >::type mask(maskSEXP);
+    Rcpp::traits::input_parameter< double >::type locations(locationsSEXP);
+    rcpp_result_gen = Rcpp::wrap(maskToLogical(mask, locations));
+    return rcpp_result_gen;
+END_RCPP
+}
+// maskFromLogical
+Rcpp::RawVector maskFromLogical(Rcpp::LogicalVector present);
+RcppExport SEXP _imply_maskFromLogical(SEXP presentSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::LogicalVector >::type present(presentSEXP);
+    rcpp_result_gen = Rcpp::wrap(maskFromLogical(present));
+    return rcpp_result_gen;
+END_RCPP
+}
+// maskCombine
+Rcpp::RawVector maskCombine(Rcpp::RawVector first, Rcpp::RawVector second, std::string how);
+RcppExport SEXP _imply_maskCombine(SEXP firstSEXP, SEXP secondSEXP, SEXP howSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::RawVector >::type first(firstSEXP);
+    Rcpp::traits::input_parameter< Rcpp::RawVector >::type second(secondSEXP);
+    Rcpp::traits::input_parameter< std::string >::type how(howSEXP);
+    rcpp_result_gen = Rcpp::wrap(maskCombine(first, second, how));
+    return rcpp_result_gen;
+END_RCPP
+}
+// tightenMask
+Rcpp::List tightenMask(Rcpp::RawVector mask, Rcpp::RObject values, double locations, double elements);
+RcppExport SEXP _imply_tightenMask(SEXP maskSEXP, SEXP valuesSEXP, SEXP locationsSEXP, SEXP elementsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::RawVector >::type mask(maskSEXP);
+    Rcpp::traits::input_parameter< Rcpp::RObject >::type values(valuesSEXP);
+    Rcpp::traits::input_parameter< double >::type locations(locationsSEXP);
+    Rcpp::traits::input_parameter< double >::type elements(elementsSEXP);
+    rcpp_result_gen = Rcpp::wrap(tightenMask(mask, values, locations, elements));
+    return rcpp_result_gen;
+END_RCPP
+}
+// repackValues
+SEXP repackValues(Rcpp::RawVector oldMask, Rcpp::RObject values, Rcpp::RawVector newMask, double locations, double elements);
+RcppExport SEXP _imply_repackValues(SEXP oldMaskSEXP, SEXP valuesSEXP, SEXP newMaskSEXP, SEXP locationsSEXP, SEXP elementsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::RawVector >::type oldMask(oldMaskSEXP);
+    Rcpp::traits::input_parameter< Rcpp::RObject >::type values(valuesSEXP);
+    Rcpp::traits::input_parameter< Rcpp::RawVector >::type newMask(newMaskSEXP);
+    Rcpp::traits::input_parameter< double >::type locations(locationsSEXP);
+    Rcpp::traits::input_parameter< double >::type elements(elementsSEXP);
+    rcpp_result_gen = Rcpp::wrap(repackValues(oldMask, values, newMask, locations, elements));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_imply_applyOverMargin", (DL_FUNC) &_imply_applyOverMargin, 7},
@@ -224,6 +342,15 @@ static const R_CallMethodDef CallEntries[] = {
     {"_imply_chunkPartition", (DL_FUNC) &_imply_chunkPartition, 2},
     {"_imply_permuteView", (DL_FUNC) &_imply_permuteView, 5},
     {"_imply_dataAddress", (DL_FUNC) &_imply_dataAddress, 1},
+    {"_imply_denseToSparse", (DL_FUNC) &_imply_denseToSparse, 2},
+    {"_imply_sparseToDense", (DL_FUNC) &_imply_sparseToDense, 4},
+    {"_imply_sparseElements", (DL_FUNC) &_imply_sparseElements, 5},
+    {"_imply_maskCount", (DL_FUNC) &_imply_maskCount, 2},
+    {"_imply_maskToLogical", (DL_FUNC) &_imply_maskToLogical, 2},
+    {"_imply_maskFromLogical", (DL_FUNC) &_imply_maskFromLogical, 1},
+    {"_imply_maskCombine", (DL_FUNC) &_imply_maskCombine, 3},
+    {"_imply_tightenMask", (DL_FUNC) &_imply_tightenMask, 4},
+    {"_imply_repackValues", (DL_FUNC) &_imply_repackValues, 5},
     {NULL, NULL, 0}
 };
 

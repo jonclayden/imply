@@ -29,6 +29,9 @@ struct logicalTag
     static constexpr int sexpType = LGLSXP;
     static bool isNA (const type x) { return x == NA_LOGICAL; }
     static type na () { return NA_LOGICAL; }
+    // NA is deliberately not zero, so a location holding one is kept when
+    // an image is packed rather than being folded away
+    static bool isZero (const type x) { return x == 0; }
 };
 
 struct integerTag
@@ -38,6 +41,9 @@ struct integerTag
     static constexpr int sexpType = INTSXP;
     static bool isNA (const type x) { return x == NA_INTEGER; }
     static type na () { return NA_INTEGER; }
+    // NA is deliberately not zero, so a location holding one is kept when
+    // an image is packed rather than being folded away
+    static bool isZero (const type x) { return x == 0; }
 };
 
 struct realTag
@@ -47,6 +53,9 @@ struct realTag
     static constexpr int sexpType = REALSXP;
     static bool isNA (const type x) { return ISNAN(x); }
     static type na () { return NA_REAL; }
+    // NA is deliberately not zero, so a location holding one is kept when
+    // an image is packed rather than being folded away
+    static bool isZero (const type x) { return x == 0.0; }
 };
 
 struct complexTag
@@ -56,6 +65,7 @@ struct complexTag
     static constexpr int sexpType = CPLXSXP;
     static bool isNA (const type x) { return ISNAN(x.r) || ISNAN(x.i); }
     static type na () { Rcomplex z; z.r = NA_REAL; z.i = NA_REAL; return z; }
+    static bool isZero (const type x) { return x.r == 0.0 && x.i == 0.0; }
 };
 
 // A non-owning typed window onto memory, which may belong to R or to us. This

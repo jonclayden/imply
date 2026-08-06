@@ -61,3 +61,39 @@ dataAddress <- function(x) {
     .Call(`_imply_dataAddress`, x)
 }
 
+denseToSparse <- function(x, spatial = NULL) {
+    .Call(`_imply_denseToSparse`, x, spatial)
+}
+
+sparseToDense <- function(mask, values, dim, spatial) {
+    .Call(`_imply_sparseToDense`, mask, values, dim, spatial)
+}
+
+sparseElements <- function(mask, values, dim, spatial, indices) {
+    .Call(`_imply_sparseElements`, mask, values, dim, spatial, indices)
+}
+
+maskCount <- function(mask, locations) {
+    .Call(`_imply_maskCount`, mask, locations)
+}
+
+maskToLogical <- function(mask, locations) {
+    .Call(`_imply_maskToLogical`, mask, locations)
+}
+
+maskFromLogical <- function(present) {
+    .Call(`_imply_maskFromLogical`, present)
+}
+
+maskCombine <- function(first, second, how) {
+    .Call(`_imply_maskCombine`, first, second, how)
+}
+
+tightenMask <- function(mask, values, locations, elements) {
+    .Call(`_imply_tightenMask`, mask, values, locations, elements)
+}
+
+repackValues <- function(oldMask, values, newMask, locations, elements) {
+    .Call(`_imply_repackValues`, oldMask, values, newMask, locations, elements)
+}
+
