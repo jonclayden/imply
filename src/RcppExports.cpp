@@ -10,6 +10,21 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// applyOverMargin
+Rcpp::List applyOverMargin(Rcpp::RObject x, Rcpp::IntegerVector margin, Rcpp::Function fun, Rcpp::Nullable<Rcpp::List> callNames, bool simplify);
+RcppExport SEXP _imply_applyOverMargin(SEXP xSEXP, SEXP marginSEXP, SEXP funSEXP, SEXP callNamesSEXP, SEXP simplifySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::RObject >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type margin(marginSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Function >::type fun(funSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::List> >::type callNames(callNamesSEXP);
+    Rcpp::traits::input_parameter< bool >::type simplify(simplifySEXP);
+    rcpp_result_gen = Rcpp::wrap(applyOverMargin(x, margin, fun, callNames, simplify));
+    return rcpp_result_gen;
+END_RCPP
+}
 // orientationFromXform
 std::string orientationFromXform(Rcpp::NumericMatrix xform);
 RcppExport SEXP _imply_orientationFromXform(SEXP xformSEXP) {
@@ -169,6 +184,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_imply_applyOverMargin", (DL_FUNC) &_imply_applyOverMargin, 5},
     {"_imply_orientationFromXform", (DL_FUNC) &_imply_orientationFromXform, 1},
     {"_imply_invertXform", (DL_FUNC) &_imply_invertXform, 1},
     {"_imply_pointsToVoxel", (DL_FUNC) &_imply_pointsToVoxel, 4},
