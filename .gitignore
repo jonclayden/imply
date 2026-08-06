@@ -7,3 +7,6 @@
 config.log
 config.status
 compile_commands.json
+src/Makevars
+autom4te.cache/
+.cache/

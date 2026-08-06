@@ -5,3 +5,6 @@
 ^.*\.Rcheck$
 ^.*\.tar\.gz$
 ^compile_commands\.json$
+^src/Makevars$
+^autom4te\.cache$
+^\.cache$
