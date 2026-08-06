@@ -4,3 +4,4 @@
 ^\.github$
 ^.*\.Rcheck$
 ^.*\.tar\.gz$
+^compile_commands\.json$

@@ -6,3 +6,4 @@
 .Rproj.user/
 config.log
 config.status
+compile_commands.json
