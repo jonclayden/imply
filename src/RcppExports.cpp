@@ -10,6 +10,69 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// orientationFromXform
+std::string orientationFromXform(Rcpp::NumericMatrix xform);
+RcppExport SEXP _imply_orientationFromXform(SEXP xformSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type xform(xformSEXP);
+    rcpp_result_gen = Rcpp::wrap(orientationFromXform(xform));
+    return rcpp_result_gen;
+END_RCPP
+}
+// invertXform
+Rcpp::NumericMatrix invertXform(Rcpp::NumericMatrix xform);
+RcppExport SEXP _imply_invertXform(SEXP xformSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type xform(xformSEXP);
+    rcpp_result_gen = Rcpp::wrap(invertXform(xform));
+    return rcpp_result_gen;
+END_RCPP
+}
+// pointsToVoxel
+Rcpp::NumericMatrix pointsToVoxel(Rcpp::NumericMatrix locs, Rcpp::NumericMatrix xform, Rcpp::NumericVector pixdim, std::string type);
+RcppExport SEXP _imply_pointsToVoxel(SEXP locsSEXP, SEXP xformSEXP, SEXP pixdimSEXP, SEXP typeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type locs(locsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type xform(xformSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type pixdim(pixdimSEXP);
+    Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
+    rcpp_result_gen = Rcpp::wrap(pointsToVoxel(locs, xform, pixdim, type));
+    return rcpp_result_gen;
+END_RCPP
+}
+// pointsFromVoxel
+Rcpp::NumericMatrix pointsFromVoxel(Rcpp::NumericMatrix locs, Rcpp::NumericMatrix xform, Rcpp::NumericVector pixdim, std::string type);
+RcppExport SEXP _imply_pointsFromVoxel(SEXP locsSEXP, SEXP xformSEXP, SEXP pixdimSEXP, SEXP typeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type locs(locsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type xform(xformSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type pixdim(pixdimSEXP);
+    Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
+    rcpp_result_gen = Rcpp::wrap(pointsFromVoxel(locs, xform, pixdim, type));
+    return rcpp_result_gen;
+END_RCPP
+}
+// roundPoints
+Rcpp::NumericMatrix roundPoints(Rcpp::NumericMatrix locs, std::string round, Rcpp::Nullable<Rcpp::NumericVector> bounds);
+RcppExport SEXP _imply_roundPoints(SEXP locsSEXP, SEXP roundSEXP, SEXP boundsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type locs(locsSEXP);
+    Rcpp::traits::input_parameter< std::string >::type round(roundSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type bounds(boundsSEXP);
+    rcpp_result_gen = Rcpp::wrap(roundPoints(locs, round, bounds));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rasterInfo
 SEXP rasterInfo(Rcpp::RObject x, Rcpp::Nullable<Rcpp::IntegerVector> spatial, bool forceDynamic);
 RcppExport SEXP _imply_rasterInfo(SEXP xSEXP, SEXP spatialSEXP, SEXP forceDynamicSEXP) {
@@ -106,6 +169,11 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_imply_orientationFromXform", (DL_FUNC) &_imply_orientationFromXform, 1},
+    {"_imply_invertXform", (DL_FUNC) &_imply_invertXform, 1},
+    {"_imply_pointsToVoxel", (DL_FUNC) &_imply_pointsToVoxel, 4},
+    {"_imply_pointsFromVoxel", (DL_FUNC) &_imply_pointsFromVoxel, 4},
+    {"_imply_roundPoints", (DL_FUNC) &_imply_roundPoints, 3},
     {"_imply_rasterInfo", (DL_FUNC) &_imply_rasterInfo, 3},
     {"_imply_flattenIndices", (DL_FUNC) &_imply_flattenIndices, 4},
     {"_imply_expandIndices", (DL_FUNC) &_imply_expandIndices, 4},
