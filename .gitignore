@@ -1,0 +1,8 @@
+*.o
+*.so
+*.dll
+*.tar.gz
+.Rcheck/
+.Rproj.user/
+config.log
+config.status
