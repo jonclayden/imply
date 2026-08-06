@@ -1,13 +1,15 @@
 Package: imply
 Version: 0.1.0
 Date: 2026-08-06
-Title: Apply functions to images
+Title: Efficiently apply functions to images
 Authors@R: c(person("Jon", "Clayden", role=c("cre","aut"),
     email="code@clayden.org", comment=c(ORCID="0000-0002-6608-0619")))
 Description: Infrastructure for manipulating image data in a broad sense,
 	including parallelisation. Supports two and three dimensional intensity-based
 	image objects, image space embedded time series, vector fields and so on.
+Imports: Rcpp
 LinkingTo: Rcpp, RcppArray
+Suggests: tinytest
 Encoding: UTF-8
 License: BSD_3_clause + file LICENCE
 URL: https://github.com/jonclayden/imply
