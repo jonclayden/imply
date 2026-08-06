@@ -39,11 +39,22 @@ public:
 
     Offset offset () const { return offset_; }
 
-    void reset ()
+    void reset () { seek(0); }
+
+    // Jump straight to a position, so that a chunk of work can start part way
+    // through without walking everything before it
+    void seek (const Extent position)
     {
-        std::fill(loc_.begin(), loc_.end(), 0);
+        position_ = position;
         offset_ = 0;
-        position_ = 0;
+
+        Extent remainder = position;
+        for (std::size_t i=0; i<dims_.size(); i++)
+        {
+            loc_[i] = remainder % dims_[i];
+            offset_ += static_cast<Offset>(loc_[i] * strides_[i]);
+            remainder /= dims_[i];
+        }
     }
 
     // Advance to the next position, returning false once exhausted

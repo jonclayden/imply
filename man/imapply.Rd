@@ -7,13 +7,13 @@
 \alias{sliceApply}
 \title{Apply a function over an image}
 \usage{
-imapply(x, margin, fun, ..., simplify = TRUE)
+imapply(x, margin, fun, ..., simplify = TRUE, threads = NULL)
 
-voxelApply(x, fun, ..., simplify = TRUE)
+voxelApply(x, fun, ..., simplify = TRUE, threads = NULL)
 
-lineApply(x, fun, ..., axis = 1L, simplify = TRUE)
+lineApply(x, fun, ..., axis = 1L, simplify = TRUE, threads = NULL)
 
-sliceApply(x, fun, ..., axis = 3L, simplify = TRUE)
+sliceApply(x, fun, ..., axis = 3L, simplify = TRUE, threads = NULL)
 }
 \arguments{
 \item{x}{An image, or any array. No custom class is required.}
@@ -25,6 +25,9 @@ sliceApply(x, fun, ..., axis = 3L, simplify = TRUE)
 \item{...}{Further arguments to \code{fun}.}
 
 \item{simplify}{Whether to simplify the result to an array where possible.}
+
+\item{threads}{Number of threads to use, or \code{NULL} to consult
+\code{getOption("imply.threads")}. See \link{parallelism}.}
 
 \item{axis}{For \code{lineApply()}, the axis lines run along; for \code{sliceApply()},
 the axis slices are cut across.}

@@ -22,7 +22,8 @@ namespace {
 template <typename Tag>
 Rcpp::List applyImpl (SEXP x, const typename Tag::type *data,
                       const std::vector<Extent> &dims, const std::vector<int> &margin,
-                      SEXP fun, SEXP callNames, const bool simplify, Tag)
+                      SEXP fun, SEXP callNames, const bool simplify,
+                      const R_xlen_t from, const R_xlen_t to, Tag)
 {
     const int nDims = static_cast<int>(dims.size());
 
@@ -58,7 +59,14 @@ Rcpp::List applyImpl (SEXP x, const typename Tag::type *data,
     offsetWalker marginWalker(marginDims, marginStrides);
     offsetWalker callWalker(callDims, callStrides);
 
-    const R_xlen_t nCalls = static_cast<R_xlen_t>(marginWalker.size());
+    // A worker may be given only part of the call space. Seeking straight to
+    // its first call avoids walking everything before it
+    const R_xlen_t begin = std::max<R_xlen_t>(0, from);
+    const R_xlen_t end = (to < 0 ? static_cast<R_xlen_t>(marginWalker.size())
+                                 : std::min<R_xlen_t>(to, static_cast<R_xlen_t>(marginWalker.size())));
+    const R_xlen_t nCalls = std::max<R_xlen_t>(0, end - begin);
+    marginWalker.seek(static_cast<Extent>(begin));
+
     const R_xlen_t subSize = static_cast<R_xlen_t>(callWalker.size());
 
     // A sub-array is passed as a bare vector when it has fewer than two
@@ -149,7 +157,8 @@ Rcpp::List applyImpl (SEXP x, const typename Tag::type *data,
 
 // [[Rcpp::export]]
 Rcpp::List applyOverMargin (Rcpp::RObject x, Rcpp::IntegerVector margin, Rcpp::Function fun,
-                            Rcpp::Nullable<Rcpp::List> callNames = R_NilValue, bool simplify = true)
+                            Rcpp::Nullable<Rcpp::List> callNames = R_NilValue, bool simplify = true,
+                            double from = 0, double to = -1)
 {
     const std::vector<Extent> dims = dimsOf(x);
     checkLength(x, dims);
@@ -177,7 +186,8 @@ Rcpp::List applyOverMargin (Rcpp::RObject x, Rcpp::IntegerVector margin, Rcpp::F
 
     Rcpp::List result;
     dispatchType(x, [&](auto tag, auto *data) -> SEXP {
-        result = applyImpl(x, data, dims, margin0, fun, names, simplify, tag);
+        result = applyImpl(x, data, dims, margin0, fun, names, simplify,
+                           static_cast<R_xlen_t>(from), static_cast<R_xlen_t>(to), tag);
         return R_NilValue;
     });
 

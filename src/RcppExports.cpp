@@ -11,8 +11,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // applyOverMargin
-Rcpp::List applyOverMargin(Rcpp::RObject x, Rcpp::IntegerVector margin, Rcpp::Function fun, Rcpp::Nullable<Rcpp::List> callNames, bool simplify);
-RcppExport SEXP _imply_applyOverMargin(SEXP xSEXP, SEXP marginSEXP, SEXP funSEXP, SEXP callNamesSEXP, SEXP simplifySEXP) {
+Rcpp::List applyOverMargin(Rcpp::RObject x, Rcpp::IntegerVector margin, Rcpp::Function fun, Rcpp::Nullable<Rcpp::List> callNames, bool simplify, double from, double to);
+RcppExport SEXP _imply_applyOverMargin(SEXP xSEXP, SEXP marginSEXP, SEXP funSEXP, SEXP callNamesSEXP, SEXP simplifySEXP, SEXP fromSEXP, SEXP toSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -21,7 +21,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::Function >::type fun(funSEXP);
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::List> >::type callNames(callNamesSEXP);
     Rcpp::traits::input_parameter< bool >::type simplify(simplifySEXP);
-    rcpp_result_gen = Rcpp::wrap(applyOverMargin(x, margin, fun, callNames, simplify));
+    Rcpp::traits::input_parameter< double >::type from(fromSEXP);
+    Rcpp::traits::input_parameter< double >::type to(toSEXP);
+    rcpp_result_gen = Rcpp::wrap(applyOverMargin(x, margin, fun, callNames, simplify, from, to));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -157,9 +159,31 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// parallelInfo
+Rcpp::List parallelInfo();
+RcppExport SEXP _imply_parallelInfo() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(parallelInfo());
+    return rcpp_result_gen;
+END_RCPP
+}
+// chunkPartition
+SEXP chunkPartition(double items, int threads);
+RcppExport SEXP _imply_chunkPartition(SEXP itemsSEXP, SEXP threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type items(itemsSEXP);
+    Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(chunkPartition(items, threads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // permuteView
-SEXP permuteView(Rcpp::RObject x, Rcpp::IntegerVector order, Rcpp::Nullable<Rcpp::IntegerVector> spatial, bool forceDynamic);
-RcppExport SEXP _imply_permuteView(SEXP xSEXP, SEXP orderSEXP, SEXP spatialSEXP, SEXP forceDynamicSEXP) {
+SEXP permuteView(Rcpp::RObject x, Rcpp::IntegerVector order, Rcpp::Nullable<Rcpp::IntegerVector> spatial, bool forceDynamic, int threads);
+RcppExport SEXP _imply_permuteView(SEXP xSEXP, SEXP orderSEXP, SEXP spatialSEXP, SEXP forceDynamicSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -167,7 +191,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type order(orderSEXP);
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::IntegerVector> >::type spatial(spatialSEXP);
     Rcpp::traits::input_parameter< bool >::type forceDynamic(forceDynamicSEXP);
-    rcpp_result_gen = Rcpp::wrap(permuteView(x, order, spatial, forceDynamic));
+    Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(permuteView(x, order, spatial, forceDynamic, threads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -184,7 +209,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_imply_applyOverMargin", (DL_FUNC) &_imply_applyOverMargin, 5},
+    {"_imply_applyOverMargin", (DL_FUNC) &_imply_applyOverMargin, 7},
     {"_imply_orientationFromXform", (DL_FUNC) &_imply_orientationFromXform, 1},
     {"_imply_invertXform", (DL_FUNC) &_imply_invertXform, 1},
     {"_imply_pointsToVoxel", (DL_FUNC) &_imply_pointsToVoxel, 4},
@@ -195,7 +220,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_imply_expandIndices", (DL_FUNC) &_imply_expandIndices, 4},
     {"_imply_lineSums", (DL_FUNC) &_imply_lineSums, 4},
     {"_imply_blockPartition", (DL_FUNC) &_imply_blockPartition, 4},
-    {"_imply_permuteView", (DL_FUNC) &_imply_permuteView, 4},
+    {"_imply_parallelInfo", (DL_FUNC) &_imply_parallelInfo, 0},
+    {"_imply_chunkPartition", (DL_FUNC) &_imply_chunkPartition, 2},
+    {"_imply_permuteView", (DL_FUNC) &_imply_permuteView, 5},
     {"_imply_dataAddress", (DL_FUNC) &_imply_dataAddress, 1},
     {NULL, NULL, 0}
 };

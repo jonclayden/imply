@@ -8,6 +8,7 @@
 #include "Storage.h"
 #include "Dispatch.h"
 #include "RImage.h"
+#include "Parallel.h"
 
 using namespace imply;
 
@@ -73,25 +74,32 @@ SEXP lineSumsImpl (const Raster &r, const typename Tag::type *data, const int di
 // Materialise a permuted view. Nothing is permuted in memory: the view carries
 // reordered strides, and the walk below reads through them
 template <typename Raster, typename Tag>
-SEXP permuteImpl (const Raster &r, const typename Tag::type *data, const std::vector<int> &order, Tag)
+SEXP permuteImpl (const Raster &r, const typename Tag::type *data, const std::vector<int> &order,
+                  const int threads, Tag)
 {
     const Raster permuted = r.permute(order);
 
+    // Allocated here, on the main thread, because nothing inside the parallel
+    // region below may touch the R API
     Rcpp::Vector<Tag::sexpType> result(static_cast<R_xlen_t>(permuted.size()));
     typename Tag::type * const out = result.begin();
 
-    // Hoisted out of the loop: constructing the index inside it would cost an
-    // allocation per element on the runtime-dimensionality path
-    typename Raster::index loc;
-    if constexpr (!Raster::isFixed)
-        loc.resize(permuted.nDims());
+    // Each chunk owns a disjoint range of the output, so there is nothing to
+    // synchronise and the result does not depend on how the work is divided
+    parallelFor(permuted.size(), threads, [&](const Extent begin, const Extent end) {
+        // Declared inside, so each worker has its own. Hoisting it out of the
+        // inner loop still matters: building the index per element would cost
+        // an allocation per element on the runtime-dimensionality path
+        typename Raster::index loc;
+        if constexpr (!Raster::isFixed)
+            loc.resize(permuted.nDims());
 
-    const Extent total = permuted.size();
-    for (Extent n=0; n<total; n++)
-    {
-        permuted.expandIndex(n, loc);
-        out[n] = data[permuted.flattenIndex(loc)];
-    }
+        for (Extent n=begin; n<end; n++)
+        {
+            permuted.expandIndex(n, loc);
+            out[n] = data[permuted.flattenIndex(loc)];
+        }
+    });
 
     result.attr("dim") = Rcpp::wrap(permuted.dim());
     return result;
@@ -233,8 +241,24 @@ SEXP blockPartition (Rcpp::RObject x, Rcpp::Nullable<Rcpp::IntegerVector> spatia
     return result;
 }
 
+// Which parallel backend was compiled in, for the test suite and for
+// reporting to the user
 // [[Rcpp::export]]
-SEXP permuteView (Rcpp::RObject x, Rcpp::IntegerVector order, Rcpp::Nullable<Rcpp::IntegerVector> spatial = R_NilValue, bool forceDynamic = false)
+Rcpp::List parallelInfo ()
+{
+    return Rcpp::List::create(
+        Rcpp::Named("backend") = std::string(parallelBackend()),
+        Rcpp::Named("available") = parallelAvailable());
+}
+
+// [[Rcpp::export]]
+SEXP chunkPartition (double items, int threads)
+{
+    return Rcpp::wrap(static_cast<double>(chunkCount(static_cast<Extent>(items), threads)));
+}
+
+// [[Rcpp::export]]
+SEXP permuteView (Rcpp::RObject x, Rcpp::IntegerVector order, Rcpp::Nullable<Rcpp::IntegerVector> spatial = R_NilValue, bool forceDynamic = false, int threads = 0)
 {
     const rasterSpec spec = specOf(x, spatial);
     const int nDims = spec.nDims();
@@ -252,10 +276,10 @@ SEXP permuteView (Rcpp::RObject x, Rcpp::IntegerVector order, Rcpp::Nullable<Rcp
 
     return dispatchType(x, [&](auto typeTag, auto *data) -> SEXP {
         if (forceDynamic)
-            return permuteImpl(dynamicRaster(spec.dims, spec.spatial), data, order0, typeTag);
+            return permuteImpl(dynamicRaster(spec.dims, spec.spatial), data, order0, threads, typeTag);
 
         return dispatchDims(nDims, [&](auto dimTag) -> SEXP {
-            return permuteImpl(raster<decltype(dimTag)::value>(spec.dims, spec.spatial), data, order0, typeTag);
+            return permuteImpl(raster<decltype(dimTag)::value>(spec.dims, spec.spatial), data, order0, threads, typeTag);
         });
     });
 }

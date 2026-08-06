@@ -36,6 +36,8 @@
 #' @param fun A function to apply.
 #' @param ... Further arguments to `fun`.
 #' @param simplify Whether to simplify the result to an array where possible.
+#' @param threads Number of threads to use, or `NULL` to consult
+#'   `getOption("imply.threads")`. See [parallelism].
 #' @param axis For `lineApply()`, the axis lines run along; for `sliceApply()`,
 #'   the axis slices are cut across.
 #' @return For `imapply()`, as [base::apply()]. For `voxelApply()`, an image
@@ -45,7 +47,7 @@ NULL
 
 #' @rdname imapply
 #' @export
-imapply <- function (x, margin, fun, ..., simplify = TRUE)
+imapply <- function (x, margin, fun, ..., simplify = TRUE, threads = NULL)
 {
     fun <- match.fun(fun)
 
@@ -80,7 +82,8 @@ imapply <- function (x, margin, fun, ..., simplify = TRUE)
     if (nCalls == 0L)
         return(applyToEmpty(x, wrapped, callDims, callNames, marginDims, marginNames))
 
-    out <- applyOverMargin(unclassArray(x), margin, wrapped, callNames, simplify)
+    out <- runOverMargin(unclassArray(x), margin, wrapped, callNames, simplify,
+                         nCalls, resolveThreads(threads))
     shapeResult(out, marginDims, marginNames, margin, simplify)
 }
 
@@ -179,7 +182,7 @@ unclassArray <- function (x)
 
 #' @rdname imapply
 #' @export
-voxelApply <- function (x, fun, ..., simplify = TRUE)
+voxelApply <- function (x, fun, ..., simplify = TRUE, threads = NULL)
 {
     nSpatial <- spatial(x)
     dims <- dim(x)
@@ -191,7 +194,7 @@ voxelApply <- function (x, fun, ..., simplify = TRUE)
     if (nSpatial == length(dims))
         stop("Image holds a single value at each location, so there is nothing to apply over")
 
-    result <- imapply(x, seq_len(nSpatial), fun, ..., simplify = simplify)
+    result <- imapply(x, seq_len(nSpatial), fun, ..., simplify = simplify, threads = threads)
 
     ## A single value per location is itself an image, and inherits the
     ## geometry of the input
@@ -203,7 +206,7 @@ voxelApply <- function (x, fun, ..., simplify = TRUE)
 
 #' @rdname imapply
 #' @export
-lineApply <- function (x, fun, ..., axis = 1L, simplify = TRUE)
+lineApply <- function (x, fun, ..., axis = 1L, simplify = TRUE, threads = NULL)
 {
     nSpatial <- spatial(x)
     axis <- checkAxis(axis, nSpatial)
@@ -215,7 +218,7 @@ lineApply <- function (x, fun, ..., axis = 1L, simplify = TRUE)
     ## running along the axis, together with the values at each of its
     ## locations. Lines never overlap, which is what makes this decomposition
     ## safe to parallelise
-    imapply(x, seq_len(nSpatial)[-axis], fun, ..., simplify = simplify)
+    imapply(x, seq_len(nSpatial)[-axis], fun, ..., simplify = simplify, threads = threads)
 }
 
 checkAxis <- function (axis, nSpatial)
@@ -229,7 +232,7 @@ checkAxis <- function (axis, nSpatial)
 
 #' @rdname imapply
 #' @export
-sliceApply <- function (x, fun, ..., axis = 3L, simplify = TRUE)
+sliceApply <- function (x, fun, ..., axis = 3L, simplify = TRUE, threads = NULL)
 {
     nSpatial <- spatial(x)
 
@@ -239,5 +242,5 @@ sliceApply <- function (x, fun, ..., axis = 3L, simplify = TRUE)
 
     ## Only the axis is retained, so fun sees the plane cut across it, together
     ## with the values at each of its locations
-    imapply(x, axis, fun, ..., simplify = simplify)
+    imapply(x, axis, fun, ..., simplify = simplify, threads = threads)
 }
