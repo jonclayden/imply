@@ -170,11 +170,14 @@ applyToEmpty <- function (x, wrapped, callDims, callNames, marginDims, marginNam
         array(value, marginDims, marginNames)
 }
 
-## The compiled side wants a plain array, and unclassing avoids any chance of
-## a method being invoked during the loop
+## Packed and sparse images are passed through untouched, since the compiled
+## loop reads them in place. Only a dense image needs unclassing, which avoids
+## any chance of a method being invoked during the loop
 unclassArray <- function (x)
 {
-    if (isDenseImage(x))
+    if (isPackedImage(x) || isSparseImage(x))
+        x
+    else if (isDenseImage(x))
         as.array(x)
     else
         x
@@ -197,8 +200,10 @@ voxelApply <- function (x, fun, ..., simplify = TRUE, threads = NULL)
     result <- imapply(x, seq_len(nSpatial), fun, ..., simplify = simplify, threads = threads)
 
     ## A single value per location is itself an image, and inherits the
-    ## geometry of the input
-    if (isDenseImage(x) && simplify && is.atomic(result) && length(result) == prod(dims[seq_len(nSpatial)]))
+    ## geometry of the input, whichever way that input was stored
+    if (isImage(x) && simplify && is.atomic(result) &&
+        typeof(result) %in% c("logical", "integer", "double", "complex") &&
+        length(result) == prod(dims[seq_len(nSpatial)]))
         result <- denseImage(array(result, dims[seq_len(nSpatial)]), template = x, spatial = nSpatial)
 
     result

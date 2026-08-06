@@ -157,7 +157,8 @@ registerSparseMethods <- function ()
         ## Only the binary forms are reachable. R resolves a unary minus
         ## through S3 group dispatch, which finds S7's own Ops.S7_object
         ## before any method registered here, so `-x` is not available; write
-        ## `0 - x` or `x * -1`, both of which stay sparse
+        ## `0 - x` or `x * -1`, both of which stay sparse. RConsortium/S7#490
+        ## fixes this, at which point the workaround can go
         handler <- local({
             op <- generic
             function (e1, e2) sparseBinary(op, e1, e2)
@@ -192,9 +193,11 @@ registerSparseMethods <- function ()
         S7::`method<-`(generic, sparseImage, handler)
     }
 
-    ## NB: `!` cannot be registered, because S7 declines to attach a method to
-    ## a primitive that is not an S3 generic in its own right. Use `x == 0`,
-    ## or negate the materialised array
+    ## NB: `!` cannot currently be registered. S7 does not count it as a member
+    ## of the Ops group, which is a bug rather than a design boundary, and is
+    ## fixed along with unary minus by RConsortium/S7#490. That branch is
+    ## approved but conflicted, so until it lands use `x == 0`, or negate the
+    ## materialised array
 
     S7::`method<-`(base::mean, sparseImage,
                function (x, ...) sum(x, ...) / length(x))

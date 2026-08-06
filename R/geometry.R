@@ -24,6 +24,10 @@ NULL
 
 #' @rdname geometry
 #' @export
+isImage <- function (x) isDenseImage(x) || isSparseImage(x) || isPackedImage(x)
+
+#' @rdname geometry
+#' @export
 spatial <- function (x) attr(x, "spatial") %||% min(3L, length(dim(x)))
 
 #' @rdname geometry

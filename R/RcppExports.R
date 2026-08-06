@@ -5,6 +5,14 @@ applyOverMargin <- function(x, margin, fun, callNames = NULL, simplify = TRUE, f
     .Call(`_imply_applyOverMargin`, x, margin, fun, callNames, simplify, from, to)
 }
 
+applyOverMarginPacked <- function(values, type, dim, margin, fun, slope = 1, intercept = 0, callNames = NULL, simplify = TRUE, from = 0, to = -1) {
+    .Call(`_imply_applyOverMarginPacked`, values, type, dim, margin, fun, slope, intercept, callNames, simplify, from, to)
+}
+
+applyOverMarginSparse <- function(mask, values, dim, spatial, margin, fun, callNames = NULL, simplify = TRUE, from = 0, to = -1) {
+    .Call(`_imply_applyOverMarginSparse`, mask, values, dim, spatial, margin, fun, callNames, simplify, from, to)
+}
+
 orientationFromXform <- function(xform) {
     .Call(`_imply_orientationFromXform`, xform)
 }
@@ -59,6 +67,30 @@ permuteView <- function(x, order, spatial = NULL, forceDynamic = FALSE, threads 
 
 dataAddress <- function(x) {
     .Call(`_imply_dataAddress`, x)
+}
+
+valueRange <- function(x) {
+    .Call(`_imply_valueRange`, x)
+}
+
+calibrateStorage <- function(type, low, high, integral) {
+    .Call(`_imply_calibrateStorage`, type, low, high, integral)
+}
+
+packNarrow <- function(x, type, slope = 1, intercept = 0) {
+    .Call(`_imply_packNarrow`, x, type, slope, intercept)
+}
+
+unpackNarrow <- function(packed, type, count, slope = 1, intercept = 0) {
+    .Call(`_imply_unpackNarrow`, packed, type, count, slope, intercept)
+}
+
+narrowElements <- function(packed, type, count, indices, slope = 1, intercept = 0) {
+    .Call(`_imply_narrowElements`, packed, type, count, indices, slope, intercept)
+}
+
+narrowSummary <- function(packed, type, count, slope = 1, intercept = 0, naRm = FALSE) {
+    .Call(`_imply_narrowSummary`, packed, type, count, slope, intercept, naRm)
 }
 
 denseToSparse <- function(x, spatial = NULL) {

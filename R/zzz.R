@@ -12,4 +12,5 @@
 {
     S7::methods_register()
     registerSparseMethods()
+    registerPackedMethods()
 }

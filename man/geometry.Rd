@@ -2,6 +2,7 @@
 % Please edit documentation in R/geometry.R
 \name{geometry}
 \alias{geometry}
+\alias{isImage}
 \alias{spatial}
 \alias{pixdim}
 \alias{pixdim<-}
@@ -12,6 +13,8 @@
 \alias{voxelToWorld}
 \title{Image geometry}
 \usage{
+isImage(x)
+
 spatial(x)
 
 pixdim(x)

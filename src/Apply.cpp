@@ -8,6 +8,8 @@
 #include "RImage.h"
 #include "Blocks.h"
 #include "Sink.h"
+#include "Sparse.h"
+#include "Narrow.h"
 
 using namespace imply;
 
@@ -19,8 +21,8 @@ namespace {
 // before looping, each sub-array is gathered directly through the stride
 // vector. Peak memory is therefore the input plus the result, rather than
 // twice the input plus the result.
-template <typename Tag>
-Rcpp::List applyImpl (SEXP x, const typename Tag::type *data,
+template <typename Accessor, typename Tag>
+Rcpp::List applyImpl (const Accessor &source,
                       const std::vector<Extent> &dims, const std::vector<int> &margin,
                       SEXP fun, SEXP callNames, const bool simplify,
                       const R_xlen_t from, const R_xlen_t to, Tag)
@@ -95,7 +97,7 @@ Rcpp::List applyImpl (SEXP x, const typename Tag::type *data,
     for (R_xlen_t k=0; k<nCalls; k++)
     {
         Rcpp::Vector<Tag::sexpType> sub(subSize);
-        gather(data, marginWalker.offset(), callWalker, sub.begin());
+        gather(source, marginWalker.offset(), callWalker, sub.begin());
         if (subHasDim)
         {
             sub.attr("dim") = subDim;
@@ -153,6 +155,35 @@ Rcpp::List applyImpl (SEXP x, const typename Tag::type *data,
                               Rcpp::Named("isList") = true);
 }
 
+std::vector<int> checkMargin (Rcpp::IntegerVector margin, const int nDims)
+{
+    std::vector<int> result;
+    result.reserve(margin.size());
+
+    for (R_xlen_t i=0; i<margin.size(); i++)
+    {
+        if (margin[i] == NA_INTEGER || margin[i] < 1 || margin[i] > nDims)
+            Rcpp::stop("Margin %d is out of range for an array with %d dimensions", i+1, nDims);
+        result.push_back(margin[i] - 1);
+    }
+
+    for (std::size_t i=0; i<result.size(); i++)
+    {
+        for (std::size_t j=i+1; j<result.size(); j++)
+        {
+            if (result[i] == result[j])
+                Rcpp::stop("Margin contains a repeated dimension");
+        }
+    }
+
+    return result;
+}
+
+std::vector<Extent> dimsFrom (Rcpp::IntegerVector dim)
+{
+    return std::vector<Extent>(dim.begin(), dim.end());
+}
+
 } // anonymous namespace
 
 // [[Rcpp::export]]
@@ -162,31 +193,71 @@ Rcpp::List applyOverMargin (Rcpp::RObject x, Rcpp::IntegerVector margin, Rcpp::F
 {
     const std::vector<Extent> dims = dimsOf(x);
     checkLength(x, dims);
-    const int nDims = static_cast<int>(dims.size());
-
-    std::vector<int> margin0;
-    margin0.reserve(margin.size());
-    for (R_xlen_t i=0; i<margin.size(); i++)
-    {
-        if (margin[i] == NA_INTEGER || margin[i] < 1 || margin[i] > nDims)
-            Rcpp::stop("Margin %d is out of range for an array with %d dimensions", i+1, nDims);
-        margin0.push_back(margin[i] - 1);
-    }
-
-    for (std::size_t i=0; i<margin0.size(); i++)
-    {
-        for (std::size_t j=i+1; j<margin0.size(); j++)
-        {
-            if (margin0[i] == margin0[j])
-                Rcpp::stop("Margin contains a repeated dimension");
-        }
-    }
-
+    const std::vector<int> margin0 = checkMargin(margin, static_cast<int>(dims.size()));
     SEXP names = (callNames.isNull() ? R_NilValue : SEXP(callNames.get()));
 
     Rcpp::List result;
     dispatchType(x, [&](auto tag, auto *data) -> SEXP {
-        result = applyImpl(x, data, dims, margin0, fun, names, simplify,
+        typedef decltype(tag) Tag;
+        result = applyImpl(denseAccessor<typename Tag::type>(data), dims, margin0, fun, names, simplify,
+                           static_cast<R_xlen_t>(from), static_cast<R_xlen_t>(to), tag);
+        return R_NilValue;
+    });
+
+    return result;
+}
+
+// The same loop over a packed image. Values are widened to double during the
+// gather, so the function sees ordinary numbers and never learns that the
+// image was stored narrowly
+// [[Rcpp::export]]
+Rcpp::List applyOverMarginPacked (Rcpp::RawVector values, std::string type, Rcpp::IntegerVector dim,
+                                  Rcpp::IntegerVector margin, Rcpp::Function fun,
+                                  double slope = 1, double intercept = 0,
+                                  Rcpp::Nullable<Rcpp::List> callNames = R_NilValue,
+                                  bool simplify = true, double from = 0, double to = -1)
+{
+    const std::vector<Extent> dims = dimsFrom(dim);
+    const std::vector<int> margin0 = checkMargin(margin, static_cast<int>(dims.size()));
+    SEXP names = (callNames.isNull() ? R_NilValue : SEXP(callNames.get()));
+
+    Rcpp::List result;
+    dispatchNarrowType(narrowTypeFromName(type), [&](auto stored) -> SEXP {
+        typedef decltype(stored) Stored;
+        result = applyImpl(narrowAccessor<Stored>(values.begin(), slope, intercept),
+                           dims, margin0, fun, names, simplify,
+                           static_cast<R_xlen_t>(from), static_cast<R_xlen_t>(to), realTag());
+        return R_NilValue;
+    });
+
+    return result;
+}
+
+// ...and over a sparse image, where the gather turns an absent location into
+// a zero. Nothing is materialised beyond one sub-array at a time
+// [[Rcpp::export]]
+Rcpp::List applyOverMarginSparse (Rcpp::RawVector mask, Rcpp::RObject values, Rcpp::IntegerVector dim,
+                                  int spatial, Rcpp::IntegerVector margin, Rcpp::Function fun,
+                                  Rcpp::Nullable<Rcpp::List> callNames = R_NilValue,
+                                  bool simplify = true, double from = 0, double to = -1)
+{
+    const std::vector<Extent> dims = dimsFrom(dim);
+    const std::vector<int> margin0 = checkMargin(margin, static_cast<int>(dims.size()));
+    SEXP names = (callNames.isNull() ? R_NilValue : SEXP(callNames.get()));
+
+    Extent locations = 1, elements = 1;
+    for (int i=0; i<spatial; i++)
+        locations *= dims[i];
+    for (std::size_t i=spatial; i<dims.size(); i++)
+        elements *= dims[i];
+
+    const locationMask bits(mask, locations);
+
+    Rcpp::List result;
+    dispatchType(values, [&](auto tag, auto *packed) -> SEXP {
+        typedef decltype(tag) Tag;
+        result = applyImpl(sparseAccessor<typename Tag::type>(bits, packed, elements),
+                           dims, margin0, fun, names, simplify,
                            static_cast<R_xlen_t>(from), static_cast<R_xlen_t>(to), tag);
         return R_NilValue;
     });

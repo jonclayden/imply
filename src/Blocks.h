@@ -79,16 +79,20 @@ public:
 };
 
 // Copy the values a walker visits into a contiguous buffer, starting from a
-// base offset. This is the gather that normalises layout for a kernel, and is
-// where a narrow storage type will later be widened as well
-template <typename T>
-inline void gather (const T *data, const Offset base, offsetWalker &walker, T *out)
+// base offset.
+//
+// The source is anything with an integer subscript, which is what lets one
+// kernel serve dense, packed and sparse images alike: this gather is where a
+// narrow type is widened and where an absent sparse location becomes a zero,
+// so nothing downstream has to know which it was reading from
+template <typename Accessor, typename T>
+inline void gather (const Accessor &source, const Offset base, offsetWalker &walker, T *out)
 {
     const Extent n = walker.size();
     walker.reset();
     for (Extent i=0; i<n; i++)
     {
-        out[i] = data[base + walker.offset()];
+        out[i] = source[static_cast<Extent>(base + walker.offset())];
         walker.next();
     }
 }

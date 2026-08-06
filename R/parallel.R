@@ -94,20 +94,38 @@ partAsList <- function (part)
     unname(split(part$values, rep(seq_len(n), each = part$elementLength)))
 }
 
+## One compiled loop serves all three representations; only the accessor it
+## reads through differs. A packed image is widened to double during the
+## gather, and an absent sparse location becomes a zero, so the function being
+## applied never learns how the image was stored
+marginRunner <- function (x, margin, wrapped, callNames, simplify)
+{
+    if (isPackedImage(x))
+        return(function (from, to) applyOverMarginPacked(x@values, x@storageType, x@dims, margin,
+                                                         wrapped, x@slope, x@intercept, callNames,
+                                                         simplify, from, to))
+    if (isSparseImage(x))
+        return(function (from, to) applyOverMarginSparse(x@mask, x@values, x@dims, x@spatial, margin,
+                                                         wrapped, callNames, simplify, from, to))
+
+    function (from, to) applyOverMargin(x, margin, wrapped, callNames, simplify, from, to)
+}
+
 ## Run the compiled loop over the whole call space, or over chunks of it in
 ## forked workers
 runOverMargin <- function (x, margin, wrapped, callNames, simplify, nCalls, threads)
 {
+    run <- marginRunner(x, margin, wrapped, callNames, simplify)
+
     if (threads <= 1L || nCalls <= 1L || !canFork())
-        return(applyOverMargin(x, margin, wrapped, callNames, simplify))
+        return(run(0, -1))
 
     chunks <- callChunks(nCalls, threads)
     if (length(chunks) == 1L)
-        return(applyOverMargin(x, margin, wrapped, callNames, simplify))
+        return(run(0, -1))
 
-    parts <- parallel::mclapply(chunks, function (chunk)
-        applyOverMargin(x, margin, wrapped, callNames, simplify, chunk[1L], chunk[2L]),
-        mc.cores = length(chunks))
+    parts <- parallel::mclapply(chunks, function (chunk) run(chunk[1L], chunk[2L]),
+                                mc.cores = length(chunks))
 
     combineParts(parts)
 }
