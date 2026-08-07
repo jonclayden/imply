@@ -25,7 +25,8 @@ template <typename Accessor, typename Tag>
 Rcpp::List applyImpl (const Accessor &source,
                       const std::vector<Extent> &dims, const std::vector<int> &margin,
                       SEXP fun, SEXP callNames, const bool simplify,
-                      const R_xlen_t from, const R_xlen_t to, Tag)
+                      const R_xlen_t from, const R_xlen_t to,
+                      SEXP progress, const R_xlen_t reportEvery, Tag)
 {
     const int nDims = static_cast<int>(dims.size());
 
@@ -91,6 +92,15 @@ Rcpp::List applyImpl (const Accessor &source,
     // than a fresh call being constructed per iteration
     Rcpp::RObject call = Rf_lang2(fun, R_NilValue);
 
+    // Progress is reported by calling back into R. That is safe here because
+    // this loop always runs on the main thread: under forked parallelism each
+    // worker is given no reporter, and the parent reports between batches
+    // instead. Positions are absolute, so a worker's range still makes sense
+    const bool reporting = (!Rf_isNull(progress) && reportEvery > 0);
+    Rcpp::RObject progressCall;
+    if (reporting)
+        progressCall = Rf_lang2(progress, R_NilValue);
+
     std::unique_ptr<VectorSink> fast;
     std::unique_ptr<ListSink> general;
 
@@ -140,6 +150,18 @@ Rcpp::List applyImpl (const Accessor &source,
             general->write(k, value);
 
         marginWalker.next();
+
+        if (reporting && ((k + 1) % reportEvery == 0))
+        {
+            SETCADR(progressCall, Rf_ScalarReal(static_cast<double>(begin + k + 1)));
+            Rf_eval(progressCall, R_GlobalEnv);
+        }
+    }
+
+    if (reporting)
+    {
+        SETCADR(progressCall, Rf_ScalarReal(static_cast<double>(begin + nCalls)));
+        Rf_eval(progressCall, R_GlobalEnv);
     }
 
     if (fast != nullptr)
@@ -189,18 +211,22 @@ std::vector<Extent> dimsFrom (Rcpp::IntegerVector dim)
 // [[Rcpp::export]]
 Rcpp::List applyOverMargin (Rcpp::RObject x, Rcpp::IntegerVector margin, Rcpp::Function fun,
                             Rcpp::Nullable<Rcpp::List> callNames = R_NilValue, bool simplify = true,
-                            double from = 0, double to = -1)
+                            double from = 0, double to = -1,
+                            Rcpp::Nullable<Rcpp::Function> progress = R_NilValue,
+                            double reportEvery = 0)
 {
     const std::vector<Extent> dims = dimsOf(x);
     checkLength(x, dims);
     const std::vector<int> margin0 = checkMargin(margin, static_cast<int>(dims.size()));
     SEXP names = (callNames.isNull() ? R_NilValue : SEXP(callNames.get()));
+    SEXP reporter = (progress.isNull() ? R_NilValue : SEXP(progress.get()));
 
     Rcpp::List result;
     dispatchType(x, [&](auto tag, auto *data) -> SEXP {
         typedef decltype(tag) Tag;
         result = applyImpl(DenseAccessor<typename Tag::Type>(data), dims, margin0, fun, names, simplify,
-                           static_cast<R_xlen_t>(from), static_cast<R_xlen_t>(to), tag);
+                           static_cast<R_xlen_t>(from), static_cast<R_xlen_t>(to),
+                           reporter, static_cast<R_xlen_t>(reportEvery), tag);
         return R_NilValue;
     });
 
@@ -215,18 +241,22 @@ Rcpp::List applyOverMarginPacked (Rcpp::RawVector values, std::string type, Rcpp
                                   Rcpp::IntegerVector margin, Rcpp::Function fun,
                                   double slope = 1, double intercept = 0,
                                   Rcpp::Nullable<Rcpp::List> callNames = R_NilValue,
-                                  bool simplify = true, double from = 0, double to = -1)
+                                  bool simplify = true, double from = 0, double to = -1,
+                                  Rcpp::Nullable<Rcpp::Function> progress = R_NilValue,
+                                  double reportEvery = 0)
 {
     const std::vector<Extent> dims = dimsFrom(dim);
     const std::vector<int> margin0 = checkMargin(margin, static_cast<int>(dims.size()));
     SEXP names = (callNames.isNull() ? R_NilValue : SEXP(callNames.get()));
+    SEXP reporter = (progress.isNull() ? R_NilValue : SEXP(progress.get()));
 
     Rcpp::List result;
     dispatchNarrowType(narrowTypeFromName(type), [&](auto stored) -> SEXP {
         typedef decltype(stored) Stored;
         result = applyImpl(NarrowAccessor<Stored>(values.begin(), slope, intercept),
                            dims, margin0, fun, names, simplify,
-                           static_cast<R_xlen_t>(from), static_cast<R_xlen_t>(to), RealTag());
+                           static_cast<R_xlen_t>(from), static_cast<R_xlen_t>(to),
+                           reporter, static_cast<R_xlen_t>(reportEvery), RealTag());
         return R_NilValue;
     });
 
@@ -239,11 +269,14 @@ Rcpp::List applyOverMarginPacked (Rcpp::RawVector values, std::string type, Rcpp
 Rcpp::List applyOverMarginSparse (Rcpp::RawVector mask, Rcpp::RObject values, Rcpp::IntegerVector dim,
                                   int spatial, Rcpp::IntegerVector margin, Rcpp::Function fun,
                                   Rcpp::Nullable<Rcpp::List> callNames = R_NilValue,
-                                  bool simplify = true, double from = 0, double to = -1)
+                                  bool simplify = true, double from = 0, double to = -1,
+                                  Rcpp::Nullable<Rcpp::Function> progress = R_NilValue,
+                                  double reportEvery = 0)
 {
     const std::vector<Extent> dims = dimsFrom(dim);
     const std::vector<int> margin0 = checkMargin(margin, static_cast<int>(dims.size()));
     SEXP names = (callNames.isNull() ? R_NilValue : SEXP(callNames.get()));
+    SEXP reporter = (progress.isNull() ? R_NilValue : SEXP(progress.get()));
 
     Extent locations = 1, elements = 1;
     for (int i=0; i<spatial; i++)
@@ -258,7 +291,8 @@ Rcpp::List applyOverMarginSparse (Rcpp::RawVector mask, Rcpp::RObject values, Rc
         typedef decltype(tag) Tag;
         result = applyImpl(SparseAccessor<typename Tag::Type>(bits, packed, elements),
                            dims, margin0, fun, names, simplify,
-                           static_cast<R_xlen_t>(from), static_cast<R_xlen_t>(to), tag);
+                           static_cast<R_xlen_t>(from), static_cast<R_xlen_t>(to),
+                           reporter, static_cast<R_xlen_t>(reportEvery), tag);
         return R_NilValue;
     });
 

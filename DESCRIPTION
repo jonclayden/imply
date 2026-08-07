@@ -7,7 +7,7 @@ Authors@R: c(person("Jon", "Clayden", role=c("cre","aut"),
 Description: Infrastructure for manipulating image data in a broad sense,
 	including parallelisation. Supports two and three dimensional intensity-based
 	image objects, image space embedded time series, vector fields and so on.
-Imports: Rcpp, S7, methods, parallel, stats
+Imports: Rcpp, S7, methods, parallel, stats, utils
 LinkingTo: Rcpp, RcppArray
 Suggests: tinytest, RNifti, tractor.base
 Encoding: UTF-8

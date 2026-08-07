@@ -4,6 +4,7 @@
 #' @importFrom Rcpp sourceCpp
 #' @importFrom methods setMethod
 #' @importFrom stats sd var
+#' @importFrom utils txtProgressBar setTxtProgressBar
 "_PACKAGE"
 
 ## S7 methods defined at the top level of a package are recorded but not

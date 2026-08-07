@@ -38,6 +38,8 @@
 #' @param simplify Whether to simplify the result to an array where possible.
 #' @param threads Number of threads to use, or `NULL` to consult
 #'   `getOption("imply.threads")`. See [parallelism].
+#' @param progress `FALSE` for none, `TRUE` for a text progress bar, or a
+#'   function of `(done, total)`. See [progress].
 #' @param axis For `lineApply()`, the axis lines run along; for `sliceApply()`,
 #'   the axis slices are cut across.
 #' @return For `imapply()`, as [base::apply()]. For `voxelApply()`, an image
@@ -47,7 +49,7 @@ NULL
 
 #' @rdname imapply
 #' @export
-imapply <- function (x, margin, fun, ..., simplify = TRUE, threads = NULL)
+imapply <- function (x, margin, fun, ..., simplify = TRUE, threads = NULL, progress = FALSE)
 {
     fun <- match.fun(fun)
 
@@ -93,8 +95,12 @@ imapply <- function (x, margin, fun, ..., simplify = TRUE, threads = NULL)
     if (!is.null(routed))
         return(imreduce(x, margin, routed, na.rm = isTRUE(extras$na.rm), threads = threads))
 
+    reporter <- newProgress(progress, nCalls)
+    if (!is.null(reporter))
+        on.exit(reporter$close(), add = TRUE)
+
     out <- runOverMargin(unclassArray(x), margin, wrapped, callNames, simplify,
-                         nCalls, resolveThreads(threads))
+                         nCalls, resolveThreads(threads), reporter)
     shapeResult(out, marginDims, marginNames, margin, simplify)
 }
 
@@ -196,7 +202,7 @@ unclassArray <- function (x)
 
 #' @rdname imapply
 #' @export
-voxelApply <- function (x, fun, ..., simplify = TRUE, threads = NULL)
+voxelApply <- function (x, fun, ..., simplify = TRUE, threads = NULL, progress = FALSE)
 {
     nSpatial <- spatial(x)
     dims <- dim(x)
@@ -208,7 +214,7 @@ voxelApply <- function (x, fun, ..., simplify = TRUE, threads = NULL)
     if (nSpatial == length(dims))
         stop("Image holds a single value at each location, so there is nothing to apply over")
 
-    result <- imapply(x, seq_len(nSpatial), fun, ..., simplify = simplify, threads = threads)
+    result <- imapply(x, seq_len(nSpatial), fun, ..., simplify = simplify, threads = threads, progress = progress)
 
     ## A single value per location is itself an image, and inherits the
     ## geometry of the input, whichever way that input was stored
@@ -222,7 +228,7 @@ voxelApply <- function (x, fun, ..., simplify = TRUE, threads = NULL)
 
 #' @rdname imapply
 #' @export
-lineApply <- function (x, fun, ..., axis = 1L, simplify = TRUE, threads = NULL)
+lineApply <- function (x, fun, ..., axis = 1L, simplify = TRUE, threads = NULL, progress = FALSE)
 {
     nSpatial <- spatial(x)
     axis <- checkAxis(axis, nSpatial)
@@ -234,7 +240,7 @@ lineApply <- function (x, fun, ..., axis = 1L, simplify = TRUE, threads = NULL)
     ## running along the axis, together with the values at each of its
     ## locations. Lines never overlap, which is what makes this decomposition
     ## safe to parallelise
-    imapply(x, seq_len(nSpatial)[-axis], fun, ..., simplify = simplify, threads = threads)
+    imapply(x, seq_len(nSpatial)[-axis], fun, ..., simplify = simplify, threads = threads, progress = progress)
 }
 
 checkAxis <- function (axis, nSpatial)
@@ -248,7 +254,7 @@ checkAxis <- function (axis, nSpatial)
 
 #' @rdname imapply
 #' @export
-sliceApply <- function (x, fun, ..., axis = 3L, simplify = TRUE, threads = NULL)
+sliceApply <- function (x, fun, ..., axis = 3L, simplify = TRUE, threads = NULL, progress = FALSE)
 {
     nSpatial <- spatial(x)
 
@@ -258,5 +264,5 @@ sliceApply <- function (x, fun, ..., axis = 3L, simplify = TRUE, threads = NULL)
 
     ## Only the axis is retained, so fun sees the plane cut across it, together
     ## with the values at each of its locations
-    imapply(x, axis, fun, ..., simplify = simplify, threads = threads)
+    imapply(x, axis, fun, ..., simplify = simplify, threads = threads, progress = progress)
 }

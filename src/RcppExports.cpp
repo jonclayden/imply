@@ -12,8 +12,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // applyOverMargin
-Rcpp::List applyOverMargin(Rcpp::RObject x, Rcpp::IntegerVector margin, Rcpp::Function fun, Rcpp::Nullable<Rcpp::List> callNames, bool simplify, double from, double to);
-RcppExport SEXP _imply_applyOverMargin(SEXP xSEXP, SEXP marginSEXP, SEXP funSEXP, SEXP callNamesSEXP, SEXP simplifySEXP, SEXP fromSEXP, SEXP toSEXP) {
+Rcpp::List applyOverMargin(Rcpp::RObject x, Rcpp::IntegerVector margin, Rcpp::Function fun, Rcpp::Nullable<Rcpp::List> callNames, bool simplify, double from, double to, Rcpp::Nullable<Rcpp::Function> progress, double reportEvery);
+RcppExport SEXP _imply_applyOverMargin(SEXP xSEXP, SEXP marginSEXP, SEXP funSEXP, SEXP callNamesSEXP, SEXP simplifySEXP, SEXP fromSEXP, SEXP toSEXP, SEXP progressSEXP, SEXP reportEverySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -24,13 +24,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type simplify(simplifySEXP);
     Rcpp::traits::input_parameter< double >::type from(fromSEXP);
     Rcpp::traits::input_parameter< double >::type to(toSEXP);
-    rcpp_result_gen = Rcpp::wrap(applyOverMargin(x, margin, fun, callNames, simplify, from, to));
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::Function> >::type progress(progressSEXP);
+    Rcpp::traits::input_parameter< double >::type reportEvery(reportEverySEXP);
+    rcpp_result_gen = Rcpp::wrap(applyOverMargin(x, margin, fun, callNames, simplify, from, to, progress, reportEvery));
     return rcpp_result_gen;
 END_RCPP
 }
 // applyOverMarginPacked
-Rcpp::List applyOverMarginPacked(Rcpp::RawVector values, std::string type, Rcpp::IntegerVector dim, Rcpp::IntegerVector margin, Rcpp::Function fun, double slope, double intercept, Rcpp::Nullable<Rcpp::List> callNames, bool simplify, double from, double to);
-RcppExport SEXP _imply_applyOverMarginPacked(SEXP valuesSEXP, SEXP typeSEXP, SEXP dimSEXP, SEXP marginSEXP, SEXP funSEXP, SEXP slopeSEXP, SEXP interceptSEXP, SEXP callNamesSEXP, SEXP simplifySEXP, SEXP fromSEXP, SEXP toSEXP) {
+Rcpp::List applyOverMarginPacked(Rcpp::RawVector values, std::string type, Rcpp::IntegerVector dim, Rcpp::IntegerVector margin, Rcpp::Function fun, double slope, double intercept, Rcpp::Nullable<Rcpp::List> callNames, bool simplify, double from, double to, Rcpp::Nullable<Rcpp::Function> progress, double reportEvery);
+RcppExport SEXP _imply_applyOverMarginPacked(SEXP valuesSEXP, SEXP typeSEXP, SEXP dimSEXP, SEXP marginSEXP, SEXP funSEXP, SEXP slopeSEXP, SEXP interceptSEXP, SEXP callNamesSEXP, SEXP simplifySEXP, SEXP fromSEXP, SEXP toSEXP, SEXP progressSEXP, SEXP reportEverySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -45,13 +47,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type simplify(simplifySEXP);
     Rcpp::traits::input_parameter< double >::type from(fromSEXP);
     Rcpp::traits::input_parameter< double >::type to(toSEXP);
-    rcpp_result_gen = Rcpp::wrap(applyOverMarginPacked(values, type, dim, margin, fun, slope, intercept, callNames, simplify, from, to));
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::Function> >::type progress(progressSEXP);
+    Rcpp::traits::input_parameter< double >::type reportEvery(reportEverySEXP);
+    rcpp_result_gen = Rcpp::wrap(applyOverMarginPacked(values, type, dim, margin, fun, slope, intercept, callNames, simplify, from, to, progress, reportEvery));
     return rcpp_result_gen;
 END_RCPP
 }
 // applyOverMarginSparse
-Rcpp::List applyOverMarginSparse(Rcpp::RawVector mask, Rcpp::RObject values, Rcpp::IntegerVector dim, int spatial, Rcpp::IntegerVector margin, Rcpp::Function fun, Rcpp::Nullable<Rcpp::List> callNames, bool simplify, double from, double to);
-RcppExport SEXP _imply_applyOverMarginSparse(SEXP maskSEXP, SEXP valuesSEXP, SEXP dimSEXP, SEXP spatialSEXP, SEXP marginSEXP, SEXP funSEXP, SEXP callNamesSEXP, SEXP simplifySEXP, SEXP fromSEXP, SEXP toSEXP) {
+Rcpp::List applyOverMarginSparse(Rcpp::RawVector mask, Rcpp::RObject values, Rcpp::IntegerVector dim, int spatial, Rcpp::IntegerVector margin, Rcpp::Function fun, Rcpp::Nullable<Rcpp::List> callNames, bool simplify, double from, double to, Rcpp::Nullable<Rcpp::Function> progress, double reportEvery);
+RcppExport SEXP _imply_applyOverMarginSparse(SEXP maskSEXP, SEXP valuesSEXP, SEXP dimSEXP, SEXP spatialSEXP, SEXP marginSEXP, SEXP funSEXP, SEXP callNamesSEXP, SEXP simplifySEXP, SEXP fromSEXP, SEXP toSEXP, SEXP progressSEXP, SEXP reportEverySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -65,7 +69,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type simplify(simplifySEXP);
     Rcpp::traits::input_parameter< double >::type from(fromSEXP);
     Rcpp::traits::input_parameter< double >::type to(toSEXP);
-    rcpp_result_gen = Rcpp::wrap(applyOverMarginSparse(mask, values, dim, spatial, margin, fun, callNames, simplify, from, to));
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::Function> >::type progress(progressSEXP);
+    Rcpp::traits::input_parameter< double >::type reportEvery(reportEverySEXP);
+    rcpp_result_gen = Rcpp::wrap(applyOverMarginSparse(mask, values, dim, spatial, margin, fun, callNames, simplify, from, to, progress, reportEvery));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -507,9 +513,9 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_imply_applyOverMargin", (DL_FUNC) &_imply_applyOverMargin, 7},
-    {"_imply_applyOverMarginPacked", (DL_FUNC) &_imply_applyOverMarginPacked, 11},
-    {"_imply_applyOverMarginSparse", (DL_FUNC) &_imply_applyOverMarginSparse, 10},
+    {"_imply_applyOverMargin", (DL_FUNC) &_imply_applyOverMargin, 9},
+    {"_imply_applyOverMarginPacked", (DL_FUNC) &_imply_applyOverMarginPacked, 13},
+    {"_imply_applyOverMarginSparse", (DL_FUNC) &_imply_applyOverMarginSparse, 12},
     {"_imply_reduceOverMargin", (DL_FUNC) &_imply_reduceOverMargin, 5},
     {"_imply_reduceOverMarginPacked", (DL_FUNC) &_imply_reduceOverMarginPacked, 9},
     {"_imply_reduceOverMarginSparse", (DL_FUNC) &_imply_reduceOverMarginSparse, 8},

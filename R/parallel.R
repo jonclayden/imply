@@ -101,31 +101,55 @@ partAsList <- function (part)
 marginRunner <- function (x, margin, wrapped, callNames, simplify)
 {
     if (isPackedImage(x))
-        return(function (from, to) applyOverMarginPacked(x@values, x@storageType, x@dims, margin,
-                                                         wrapped, x@slope, x@intercept, callNames,
-                                                         simplify, from, to))
+        return(function (from, to, report, every)
+            applyOverMarginPacked(x@values, x@storageType, x@dims, margin, wrapped,
+                                  x@slope, x@intercept, callNames, simplify, from, to,
+                                  report, every))
     if (isSparseImage(x))
-        return(function (from, to) applyOverMarginSparse(x@mask, x@values, x@dims, x@spatial, margin,
-                                                         wrapped, callNames, simplify, from, to))
+        return(function (from, to, report, every)
+            applyOverMarginSparse(x@mask, x@values, x@dims, x@spatial, margin, wrapped,
+                                  callNames, simplify, from, to, report, every))
 
-    function (from, to) applyOverMargin(x, margin, wrapped, callNames, simplify, from, to)
+    function (from, to, report, every)
+        applyOverMargin(x, margin, wrapped, callNames, simplify, from, to, report, every)
 }
 
 ## Run the compiled loop over the whole call space, or over chunks of it in
 ## forked workers
-runOverMargin <- function (x, margin, wrapped, callNames, simplify, nCalls, threads)
+runOverMargin <- function (x, margin, wrapped, callNames, simplify, nCalls, threads, progress = NULL)
 {
     run <- marginRunner(x, margin, wrapped, callNames, simplify)
+    report <- if (is.null(progress)) NULL else progress$report
+    every <- if (is.null(progress)) 0 else reportInterval(nCalls)
 
     if (threads <= 1L || nCalls <= 1L || !canFork())
-        return(run(0, -1))
+        return(run(0, -1, report, every))
 
     chunks <- callChunks(nCalls, threads)
     if (length(chunks) == 1L)
-        return(run(0, -1))
+        return(run(0, -1, report, every))
 
-    parts <- parallel::mclapply(chunks, function (chunk) run(chunk[1L], chunk[2L]),
-                                mc.cores = length(chunks))
+    ## Without progress there is nothing to come back for, so the whole call
+    ## space goes out at once
+    if (is.null(report))
+        return(combineParts(parallel::mclapply(chunks,
+            function (chunk) run(chunk[1L], chunk[2L], NULL, 0),
+            mc.cores = length(chunks))))
+
+    ## With progress, the work is batched so the parent regains control often
+    ## enough to advance the bar. Workers report nothing: they are separate
+    ## processes, and several writing to one console would interleave
+    batches <- rangeChunks(0, nCalls, min(50L, max(1L, nCalls %/% threads)))
+    parts <- list()
+
+    for (batch in batches)
+    {
+        pieces <- rangeChunks(batch[1L], batch[2L], threads)
+        parts <- c(parts, parallel::mclapply(pieces,
+            function (piece) run(piece[1L], piece[2L], NULL, 0),
+            mc.cores = length(pieces)))
+        report(batch[2L])
+    }
 
     combineParts(parts)
 }
