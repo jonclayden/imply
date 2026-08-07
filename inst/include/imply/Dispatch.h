@@ -18,26 +18,26 @@ namespace imply {
 // a hot loop.
 
 // Call fn with the type tag matching x's storage mode. fn is a generic lambda
-// taking (Tag, Tag::type *)
+// taking (Tag, Tag::Type *)
 template <class Functor>
 inline SEXP dispatchType (SEXP x, Functor &&fn)
 {
     switch (TYPEOF(x))
     {
-        case LGLSXP:  return fn(logicalTag(), LOGICAL(x));
-        case INTSXP:  return fn(integerTag(), INTEGER(x));
-        case REALSXP: return fn(realTag(), REAL(x));
-        case CPLXSXP: return fn(complexTag(), COMPLEX(x));
+        case LGLSXP:  return fn(LogicalTag(), LOGICAL(x));
+        case INTSXP:  return fn(IntegerTag(), INTEGER(x));
+        case REALSXP: return fn(RealTag(), REAL(x));
+        case CPLXSXP: return fn(ComplexTag(), COMPLEX(x));
         default:
         Rf_error("Unsupported storage mode '%s': imply handles logical, integer, double and complex data", Rf_type2char(TYPEOF(x)));
     }
 }
 
 // Call fn with a compile-time dimensionality where one of the common cases
-// applies, and with the runtime-dimensionality raster otherwise. fn is a
+// applies, and with the runtime-dimensionality Raster otherwise. fn is a
 // generic lambda taking std::integral_constant<int,D>.
 //
-// The fixed variants exist because a dynamic raster allocates when it builds an
+// The fixed variants exist because a dynamic Raster allocates when it builds an
 // index, which in a per-voxel loop is an allocation per voxel. Instantiating
 // beyond five dimensions has no practical payoff for image data
 template <class Functor>

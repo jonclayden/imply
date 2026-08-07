@@ -16,7 +16,7 @@ namespace imply {
 // per step in the common case and allocates nothing. That is what allows a
 // sub-array to be gathered without first permuting the whole image the way
 // base::apply() does
-class offsetWalker
+class OffsetWalker
 {
 protected:
     std::vector<Extent> dims_, strides_, loc_;
@@ -24,9 +24,9 @@ protected:
     Extent position_, total_;
 
 public:
-    offsetWalker () : offset_(0), position_(0), total_(0) {}
+    OffsetWalker () : offset_(0), position_(0), total_(0) {}
 
-    offsetWalker (const std::vector<Extent> &dims, const std::vector<Extent> &strides)
+    OffsetWalker (const std::vector<Extent> &dims, const std::vector<Extent> &strides)
         : dims_(dims), strides_(strides), loc_(dims.size(), 0), offset_(0), position_(0)
     {
         total_ = 1;
@@ -86,7 +86,7 @@ public:
 // narrow type is widened and where an absent sparse location becomes a zero,
 // so nothing downstream has to know which it was reading from
 template <typename Accessor, typename T>
-inline void gather (const Accessor &source, const Offset base, offsetWalker &walker, T *out)
+inline void gather (const Accessor &source, const Offset base, OffsetWalker &walker, T *out)
 {
     const Extent n = walker.size();
     walker.reset();

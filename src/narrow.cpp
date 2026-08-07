@@ -19,14 +19,14 @@ Rcpp::List valueRange (Rcpp::RObject x)
     dispatchType(x, [&](auto tag, auto *data) -> SEXP {
         typedef decltype(tag) Tag;
 
-        if constexpr (Tag::kind == storageType::complex)
+        if constexpr (Tag::kind == StorageType::complex)
             Rcpp::stop("Complex data cannot be stored in a narrow type");
         else
         {
             const R_xlen_t n = Rf_xlength(x);
             for (R_xlen_t i=0; i<n; i++)
             {
-                const typename Tag::type value = data[i];
+                const typename Tag::Type value = data[i];
                 if (Tag::isNA(value))
                 {
                     missing = true;
@@ -65,7 +65,7 @@ Rcpp::List valueRange (Rcpp::RObject x)
 // [[Rcpp::export]]
 Rcpp::List calibrateStorage (std::string type, double low, double high, bool integral)
 {
-    const calibration result = calibrateFor(narrowTypeFromName(type), low, high, integral);
+    const Calibration result = calibrateFor(narrowTypeFromName(type), low, high, integral);
     return Rcpp::List::create(Rcpp::Named("slope") = result.slope,
                               Rcpp::Named("intercept") = result.intercept);
 }
@@ -74,7 +74,7 @@ Rcpp::List calibrateStorage (std::string type, double low, double high, bool int
 // [[Rcpp::export]]
 Rcpp::RawVector packNarrow (Rcpp::RObject x, std::string type, double slope = 1, double intercept = 0)
 {
-    const narrowType target = narrowTypeFromName(type);
+    const NarrowType target = narrowTypeFromName(type);
     const R_xlen_t n = Rf_xlength(x);
 
     if (slope == 0)
@@ -90,7 +90,7 @@ Rcpp::RawVector packNarrow (Rcpp::RObject x, std::string type, double slope = 1,
     dispatchType(x, [&](auto tag, auto *data) -> SEXP {
         typedef decltype(tag) Tag;
 
-        if constexpr (Tag::kind == storageType::complex)
+        if constexpr (Tag::kind == StorageType::complex)
             Rcpp::stop("Complex data cannot be stored in a narrow type");
         else
         {
@@ -99,7 +99,7 @@ Rcpp::RawVector packNarrow (Rcpp::RObject x, std::string type, double slope = 1,
 
                 for (R_xlen_t i=0; i<n; i++)
                 {
-                    const typename Tag::type raw = data[i];
+                    const typename Tag::Type raw = data[i];
                     double value;
 
                     if (Tag::isNA(raw))
@@ -137,7 +137,7 @@ Rcpp::RawVector packNarrow (Rcpp::RObject x, std::string type, double slope = 1,
 Rcpp::NumericVector unpackNarrow (Rcpp::RawVector packed, std::string type, double count,
                                   double slope = 1, double intercept = 0)
 {
-    const narrowType target = narrowTypeFromName(type);
+    const NarrowType target = narrowTypeFromName(type);
     const R_xlen_t n = static_cast<R_xlen_t>(count);
 
     if (packed.size() < n * static_cast<R_xlen_t>(narrowTypeSize(target)))
@@ -148,7 +148,7 @@ Rcpp::NumericVector unpackNarrow (Rcpp::RawVector packed, std::string type, doub
 
     dispatchNarrowType(target, [&](auto stored) -> SEXP {
         typedef decltype(stored) Stored;
-        const narrowAccessor<Stored> accessor(bytes, slope, intercept);
+        const NarrowAccessor<Stored> accessor(bytes, slope, intercept);
         for (R_xlen_t i=0; i<n; i++)
             result[i] = accessor[static_cast<Extent>(i)];
         return R_NilValue;
@@ -162,14 +162,14 @@ Rcpp::NumericVector unpackNarrow (Rcpp::RawVector packed, std::string type, doub
 Rcpp::NumericVector narrowElements (Rcpp::RawVector packed, std::string type, double count,
                                     Rcpp::NumericVector indices, double slope = 1, double intercept = 0)
 {
-    const narrowType target = narrowTypeFromName(type);
+    const NarrowType target = narrowTypeFromName(type);
     const Extent total = static_cast<Extent>(count);
     Rcpp::NumericVector result(indices.size());
     const Rbyte * const bytes = packed.begin();
 
     dispatchNarrowType(target, [&](auto stored) -> SEXP {
         typedef decltype(stored) Stored;
-        const narrowAccessor<Stored> accessor(bytes, slope, intercept);
+        const NarrowAccessor<Stored> accessor(bytes, slope, intercept);
 
         for (R_xlen_t k=0; k<indices.size(); k++)
         {
@@ -190,7 +190,7 @@ Rcpp::NumericVector narrowElements (Rcpp::RawVector packed, std::string type, do
 Rcpp::List narrowSummary (Rcpp::RawVector packed, std::string type, double count,
                           double slope = 1, double intercept = 0, bool naRm = false)
 {
-    const narrowType target = narrowTypeFromName(type);
+    const NarrowType target = narrowTypeFromName(type);
     const Extent n = static_cast<Extent>(count);
 
     double total = 0.0, low = R_PosInf, high = R_NegInf;
@@ -201,7 +201,7 @@ Rcpp::List narrowSummary (Rcpp::RawVector packed, std::string type, double count
 
     dispatchNarrowType(target, [&](auto stored) -> SEXP {
         typedef decltype(stored) Stored;
-        const narrowAccessor<Stored> accessor(bytes, slope, intercept);
+        const NarrowAccessor<Stored> accessor(bytes, slope, intercept);
 
         for (Extent i=0; i<n; i++)
         {

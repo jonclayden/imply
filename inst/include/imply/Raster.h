@@ -18,12 +18,12 @@ constexpr int dynamic = -1;
 
 // A contiguous run of spatial locations. This is the unit of blocked traversal
 // and, equivalently, of parallel work division
-struct block
+struct Block
 {
     Extent start, length;
 
-    block () : start(0), length(0) {}
-    block (const Extent start, const Extent length) : start(start), length(length) {}
+    Block () : start(0), length(0) {}
+    Block (const Extent start, const Extent length) : start(start), length(length) {}
 
     Extent end () const { return start + length; }
 };
@@ -37,16 +37,16 @@ namespace internal {
 // returning loc[0] directly. The original was only correct when the first
 // dimension is contiguous, which is not true of a permuted view
 template <int D, int N=D>
-struct indexer
+struct Indexer
 {
     static Extent flatten (const std::array<Extent,D> &loc, const std::array<Extent,D> &strides)
     {
-        return strides[N-1] * loc[N-1] + indexer<D,N-1>::flatten(loc, strides);
+        return strides[N-1] * loc[N-1] + Indexer<D,N-1>::flatten(loc, strides);
     }
 };
 
 template <int D>
-struct indexer<D,1>
+struct Indexer<D,1>
 {
     static Extent flatten (const std::array<Extent,D> &loc, const std::array<Extent,D> &strides)
     {
@@ -58,8 +58,8 @@ struct indexer<D,1>
 // heap only when it must be discovered at runtime. This is the substantive
 // reason for having a compile-time variant at all: it removes an allocation
 // per index construction from hot loops
-template <int D> struct extentContainer { typedef std::array<Extent,D> type; };
-template <> struct extentContainer<dynamic> { typedef std::vector<Extent> type; };
+template <int D> struct ExtentContainer { typedef std::array<Extent,D> Type; };
+template <> struct ExtentContainer<dynamic> { typedef std::vector<Extent> Type; };
 
 } // namespace internal
 
@@ -70,14 +70,14 @@ template <> struct extentContainer<dynamic> { typedef std::vector<Extent> type; 
 // series, vector or tensor). All indexing goes through the stride vector, so a
 // permuted or sliced view is a stride permutation rather than a copy.
 template <int D = dynamic>
-class raster
+class Raster
 {
 public:
-    typedef typename internal::extentContainer<D>::type index;
+    typedef typename internal::ExtentContainer<D>::Type Index;
     static constexpr bool isFixed = (D != dynamic);
 
 protected:
-    index dims_, strides_;
+    Index dims_, strides_;
     Extent length_, spatialLength_, elementLength_;
     int spatial_;
 
@@ -122,7 +122,7 @@ protected:
     }
 
 public:
-    raster () : length_(0), spatialLength_(0), elementLength_(0), spatial_(0)
+    Raster () : length_(0), spatialLength_(0), elementLength_(0), spatial_(0)
     {
         if constexpr (isFixed)
         {
@@ -131,9 +131,9 @@ public:
         }
     }
 
-    // Not explicit: we want a dimension vector to convert to a raster freely
+    // Not explicit: we want a dimension vector to convert to a Raster freely
     template <typename Container>
-    raster (const Container &dims, const int spatial = -1)
+    Raster (const Container &dims, const int spatial = -1)
     {
         resizeIfDynamic(dims.size());
         std::copy(dims.begin(), dims.end(), dims_.begin());
@@ -145,7 +145,7 @@ public:
     // Construct a view with explicit strides, as produced by permutation or
     // slicing. No ownership or bounds relationship to any parent is implied
     template <typename Container>
-    raster (const Container &dims, const Container &strides, const int spatial)
+    Raster (const Container &dims, const Container &strides, const int spatial)
     {
         if (dims.size() != strides.size())
             throw std::runtime_error("Dimension and stride vectors are of different lengths");
@@ -159,8 +159,8 @@ public:
     int nDims () const { return static_cast<int>(dims_.size()); }
     int spatial () const { return spatial_; }
 
-    const index & dim () const { return dims_; }
-    const index & strides () const { return strides_; }
+    const Index & dim () const { return dims_; }
+    const Index & strides () const { return strides_; }
 
     Extent dim (const int i) const { return dims_[i]; }
     Extent stride (const int i) const { return strides_[i]; }
@@ -173,7 +173,7 @@ public:
 
     bool empty () const { return length_ == 0; }
 
-    // True if the whole raster is densely packed in the default stride order,
+    // True if the whole Raster is densely packed in the default stride order,
     // which is what allows a kernel to fall back on plain pointer arithmetic
     bool isContiguous () const
     {
@@ -189,10 +189,10 @@ public:
 
     bool isContiguous (const int dim) const { return strides_[dim] == 1; }
 
-    Extent flattenIndex (const index &loc) const
+    Extent flattenIndex (const Index &loc) const
     {
         if constexpr (isFixed)
-            return internal::indexer<D>::flatten(loc, strides_);
+            return internal::Indexer<D>::flatten(loc, strides_);
         else
         {
             Extent result = 0;
@@ -202,7 +202,7 @@ public:
         }
     }
 
-    void expandIndex (const Extent n, index &result) const
+    void expandIndex (const Extent n, Index &result) const
     {
         // Only meaningful in the default stride order; a permuted view must be
         // expanded against its own dimension order
@@ -214,9 +214,9 @@ public:
         }
     }
 
-    index expandIndex (const Extent n) const
+    Index expandIndex (const Extent n) const
     {
-        index result;
+        Index result;
         if constexpr (!isFixed)
             result.resize(dims_.size());
         expandIndex(n, result);
@@ -302,16 +302,16 @@ public:
     // Partition the spatial locations into runs small enough that one run's
     // worth of values stays in cache. This same partition is what gets handed
     // to worker threads
-    std::vector<block> blocks (const Extent targetElements) const
+    std::vector<Block> blocks (const Extent targetElements) const
     {
         const Extent perLocation = std::max<Extent>(1, elementLength_);
         Extent size = std::max<Extent>(1, targetElements / perLocation);
         return blocksOfSize(size);
     }
 
-    std::vector<block> blocksOfSize (const Extent size) const
+    std::vector<Block> blocksOfSize (const Extent size) const
     {
-        std::vector<block> result;
+        std::vector<Block> result;
         if (spatialLength_ == 0 || size == 0)
             return result;
 
@@ -324,22 +324,22 @@ public:
     // Split into at most `count` roughly equal runs. Dispatching over these
     // rather than over raw iterations is what makes a requested thread count
     // meaningful on backends that offer no width control of their own
-    std::vector<block> blocksForCount (const Extent count) const
+    std::vector<Block> blocksForCount (const Extent count) const
     {
         if (count == 0 || spatialLength_ == 0)
-            return std::vector<block>();
+            return std::vector<Block>();
         return blocksOfSize((spatialLength_ + count - 1) / count);
     }
 
     // A permuted view. Both the dimension and stride vectors are reordered, so
     // no data movement is implied
     template <typename Container>
-    raster<D> permute (const Container &order) const
+    Raster<D> permute (const Container &order) const
     {
         if (static_cast<int>(order.size()) != nDims())
             throw std::runtime_error("Permutation is not of the right length");
 
-        index newDims = dims_, newStrides = strides_;
+        Index newDims = dims_, newStrides = strides_;
         std::vector<bool> seen(nDims(), false);
         for (int i=0; i<nDims(); i++)
         {
@@ -351,14 +351,14 @@ public:
             newStrides[i] = strides_[j];
         }
 
-        return raster<D>(newDims, newStrides, spatial_);
+        return Raster<D>(newDims, newStrides, spatial_);
     }
 };
 
-typedef raster<dynamic> dynamicRaster;
+typedef Raster<dynamic> DynamicRaster;
 
 template <int D>
-using fixedRaster = raster<D>;
+using FixedRaster = Raster<D>;
 
 } // namespace imply
 

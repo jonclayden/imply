@@ -32,14 +32,14 @@ inline bool getBit (const Rbyte *bytes, const Extent i)
 // Split the dense dimensions into a count of locations and a count of values
 // held at each. The spatial dimensions lead and are contiguous, which is what
 // lets a dense linear index be decomposed arithmetically
-struct shape
+struct Shape
 {
     Extent locations, elements;
 };
 
-shape shapeOf (const std::vector<Extent> &dims, const int spatial)
+Shape shapeOf (const std::vector<Extent> &dims, const int spatial)
 {
-    shape result;
+    Shape result;
     result.locations = 1;
     for (int i=0; i<spatial; i++)
         result.locations *= dims[i];
@@ -54,8 +54,8 @@ shape shapeOf (const std::vector<Extent> &dims, const int spatial)
 // [[Rcpp::export]]
 Rcpp::List denseToSparse (Rcpp::RObject x, Rcpp::Nullable<Rcpp::IntegerVector> spatial = R_NilValue)
 {
-    const rasterSpec spec = specOf(x, spatial);
-    const shape s = shapeOf(spec.dims, spec.spatial);
+    const RasterSpec spec = specOf(x, spatial);
+    const Shape s = shapeOf(spec.dims, spec.spatial);
 
     Rcpp::List result;
 
@@ -110,14 +110,14 @@ Rcpp::List denseToSparse (Rcpp::RObject x, Rcpp::Nullable<Rcpp::IntegerVector> s
 SEXP sparseToDense (Rcpp::RawVector mask, Rcpp::RObject values, Rcpp::IntegerVector dim, int spatial)
 {
     std::vector<Extent> dims(dim.begin(), dim.end());
-    const shape s = shapeOf(dims, spatial);
-    const locationMask bits(mask, s.locations);
+    const Shape s = shapeOf(dims, spatial);
+    const LocationMask bits(mask, s.locations);
 
     return dispatchType(values, [&](auto tag, auto *packed) -> SEXP {
         typedef decltype(tag) Tag;
 
         Rcpp::Vector<Tag::sexpType> result(static_cast<R_xlen_t>(s.locations * s.elements));
-        std::fill(result.begin(), result.end(), typename Tag::type());
+        std::fill(result.begin(), result.end(), typename Tag::Type());
 
         for (Extent i=0; i<s.locations; i++)
         {
@@ -139,14 +139,14 @@ SEXP sparseElements (Rcpp::RawVector mask, Rcpp::RObject values, Rcpp::IntegerVe
                      Rcpp::NumericVector indices)
 {
     std::vector<Extent> dims(dim.begin(), dim.end());
-    const shape s = shapeOf(dims, spatial);
-    const locationMask bits(mask, s.locations);
+    const Shape s = shapeOf(dims, spatial);
+    const LocationMask bits(mask, s.locations);
     const Extent total = s.locations * s.elements;
 
     return dispatchType(values, [&](auto tag, auto *packed) -> SEXP {
         typedef decltype(tag) Tag;
 
-        const sparseAccessor<typename Tag::type> accessor(bits, packed, s.elements);
+        const SparseAccessor<typename Tag::Type> accessor(bits, packed, s.elements);
         Rcpp::Vector<Tag::sexpType> result(indices.size());
 
         for (R_xlen_t k=0; k<indices.size(); k++)
@@ -164,7 +164,7 @@ SEXP sparseElements (Rcpp::RawVector mask, Rcpp::RObject values, Rcpp::IntegerVe
 // [[Rcpp::export]]
 double maskCount (Rcpp::RawVector mask, double locations)
 {
-    const locationMask bits(mask, static_cast<Extent>(locations));
+    const LocationMask bits(mask, static_cast<Extent>(locations));
     return static_cast<double>(bits.count());
 }
 
@@ -230,7 +230,7 @@ Rcpp::List tightenMask (Rcpp::RawVector mask, Rcpp::RObject values, double locat
 {
     const Extent n = static_cast<Extent>(locations);
     const Extent e = static_cast<Extent>(elements);
-    const locationMask bits(mask, n);
+    const LocationMask bits(mask, n);
 
     Rcpp::List result;
 
@@ -293,14 +293,14 @@ SEXP repackValues (Rcpp::RawVector oldMask, Rcpp::RObject values, Rcpp::RawVecto
 {
     const Extent n = static_cast<Extent>(locations);
     const Extent e = static_cast<Extent>(elements);
-    const locationMask before(oldMask, n);
-    const locationMask after(newMask, n);
+    const LocationMask before(oldMask, n);
+    const LocationMask after(newMask, n);
 
     return dispatchType(values, [&](auto tag, auto *packed) -> SEXP {
         typedef decltype(tag) Tag;
 
         Rcpp::Vector<Tag::sexpType> result(static_cast<R_xlen_t>(after.count() * e));
-        std::fill(result.begin(), result.end(), typename Tag::type());
+        std::fill(result.begin(), result.end(), typename Tag::Type());
 
         for (Extent i=0; i<n; i++)
         {

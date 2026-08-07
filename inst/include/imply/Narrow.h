@@ -24,64 +24,64 @@ namespace imply {
 // A raw vector is used rather than an external pointer so that the data is
 // garbage-collected, serialises, and survives a save/load like any other R
 // object.
-enum class narrowType { int8, uint8, int16, uint16, int32, float32 };
+enum class NarrowType { int8, uint8, int16, uint16, int32, float32 };
 
-inline std::string narrowTypeName (const narrowType type)
+inline std::string narrowTypeName (const NarrowType type)
 {
     switch (type)
     {
-        case narrowType::int8:    return "int8";
-        case narrowType::uint8:   return "uint8";
-        case narrowType::int16:   return "int16";
-        case narrowType::uint16:  return "uint16";
-        case narrowType::int32:   return "int32";
-        case narrowType::float32: return "float32";
+        case NarrowType::int8:    return "int8";
+        case NarrowType::uint8:   return "uint8";
+        case NarrowType::int16:   return "int16";
+        case NarrowType::uint16:  return "uint16";
+        case NarrowType::int32:   return "int32";
+        case NarrowType::float32: return "float32";
     }
     return "unknown";
 }
 
-inline narrowType narrowTypeFromName (const std::string &name)
+inline NarrowType narrowTypeFromName (const std::string &name)
 {
-    if (name == "int8")    return narrowType::int8;
-    if (name == "uint8")   return narrowType::uint8;
-    if (name == "int16")   return narrowType::int16;
-    if (name == "uint16")  return narrowType::uint16;
-    if (name == "int32")   return narrowType::int32;
-    if (name == "float32") return narrowType::float32;
+    if (name == "int8")    return NarrowType::int8;
+    if (name == "uint8")   return NarrowType::uint8;
+    if (name == "int16")   return NarrowType::int16;
+    if (name == "uint16")  return NarrowType::uint16;
+    if (name == "int32")   return NarrowType::int32;
+    if (name == "float32") return NarrowType::float32;
     Rcpp::stop("Unknown storage type \"%s\"; expected int8, uint8, int16, uint16, int32 or float32", name);
 }
 
-inline std::size_t narrowTypeSize (const narrowType type)
+inline std::size_t narrowTypeSize (const NarrowType type)
 {
     switch (type)
     {
-        case narrowType::int8:
-        case narrowType::uint8:   return 1;
-        case narrowType::int16:
-        case narrowType::uint16:  return 2;
-        case narrowType::int32:
-        case narrowType::float32: return 4;
+        case NarrowType::int8:
+        case NarrowType::uint8:   return 1;
+        case NarrowType::int16:
+        case NarrowType::uint16:  return 2;
+        case NarrowType::int32:
+        case NarrowType::float32: return 4;
     }
     return 0;
 }
 
-inline bool narrowTypeIsInteger (const narrowType type)
+inline bool narrowTypeIsInteger (const NarrowType type)
 {
-    return type != narrowType::float32;
+    return type != NarrowType::float32;
 }
 
 // The representable range, as doubles, used when deciding whether a scaling is
 // needed and when clamping on the way in
-inline void narrowTypeRange (const narrowType type, double &low, double &high)
+inline void narrowTypeRange (const NarrowType type, double &low, double &high)
 {
     switch (type)
     {
-        case narrowType::int8:    low = -128.0;        high = 127.0;         break;
-        case narrowType::uint8:   low = 0.0;           high = 255.0;         break;
-        case narrowType::int16:   low = -32768.0;      high = 32767.0;       break;
-        case narrowType::uint16:  low = 0.0;           high = 65535.0;       break;
-        case narrowType::int32:   low = -2147483648.0; high = 2147483647.0;  break;
-        case narrowType::float32: low = -3.4028234663852886e38;
+        case NarrowType::int8:    low = -128.0;        high = 127.0;         break;
+        case NarrowType::uint8:   low = 0.0;           high = 255.0;         break;
+        case NarrowType::int16:   low = -32768.0;      high = 32767.0;       break;
+        case NarrowType::uint16:  low = 0.0;           high = 65535.0;       break;
+        case NarrowType::int32:   low = -2147483648.0; high = 2147483647.0;  break;
+        case NarrowType::float32: low = -3.4028234663852886e38;
                                   high = 3.4028234663852886e38;             break;
     }
 }
@@ -111,7 +111,7 @@ inline void writeAs (Rbyte *bytes, const Extent index, const T value)
 // all and the number of template instantiations does not multiply by the
 // number of storage types
 template <typename Stored>
-class narrowAccessor
+class NarrowAccessor
 {
 protected:
     const Rbyte *bytes;
@@ -119,7 +119,7 @@ protected:
     bool scaled;
 
 public:
-    narrowAccessor (const Rbyte *bytes, const double slope, const double intercept)
+    NarrowAccessor (const Rbyte *bytes, const double slope, const double intercept)
         : bytes(bytes), slope(slope), intercept(intercept),
           scaled(slope != 1.0 || intercept != 0.0) {}
 
@@ -140,16 +140,16 @@ public:
 // Run fn with the C type matching a narrow storage type, so a loop over
 // narrow data is written once rather than six times
 template <class Functor>
-inline SEXP dispatchNarrowType (const narrowType type, Functor &&fn)
+inline SEXP dispatchNarrowType (const NarrowType type, Functor &&fn)
 {
     switch (type)
     {
-        case narrowType::int8:    return fn(std::int8_t());
-        case narrowType::uint8:   return fn(std::uint8_t());
-        case narrowType::int16:   return fn(std::int16_t());
-        case narrowType::uint16:  return fn(std::uint16_t());
-        case narrowType::int32:   return fn(std::int32_t());
-        case narrowType::float32: return fn(float());
+        case NarrowType::int8:    return fn(std::int8_t());
+        case NarrowType::uint8:   return fn(std::uint8_t());
+        case NarrowType::int16:   return fn(std::int16_t());
+        case NarrowType::uint16:  return fn(std::uint16_t());
+        case NarrowType::int32:   return fn(std::int32_t());
+        case NarrowType::float32: return fn(float());
     }
     Rcpp::stop("Unhandled storage type");
 }
@@ -157,15 +157,15 @@ inline SEXP dispatchNarrowType (const narrowType type, Functor &&fn)
 // Choose a scaling that maps the data onto the whole of an integer type's
 // range, but only when the data does not already fit. Modelled on RNifti's
 // NiftiImageData::calibrateFrom
-struct calibration
+struct Calibration
 {
     double slope, intercept;
 };
 
-inline calibration calibrateFor (const narrowType type, const double dataMin, const double dataMax,
+inline Calibration calibrateFor (const NarrowType type, const double dataMin, const double dataMax,
                                  const bool integral)
 {
-    calibration result { 1.0, 0.0 };
+    Calibration result { 1.0, 0.0 };
 
     if (!narrowTypeIsInteger(type))
         return result;

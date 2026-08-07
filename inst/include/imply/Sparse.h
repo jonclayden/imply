@@ -49,7 +49,7 @@ inline std::uint64_t wordAt (const Rbyte *bytes, const std::size_t word)
 // preceding word. tractor.base's SparseArray instead matches against a
 // recomputed vector of linear indices, which is O(nnz) for every single index
 // operation.
-class locationMask
+class LocationMask
 {
 protected:
     const Rbyte *bytes;
@@ -57,7 +57,7 @@ protected:
     Extent locations_, count_;
 
 public:
-    locationMask (SEXP mask, const Extent locations)
+    LocationMask (SEXP mask, const Extent locations)
         : bytes(RAW(mask)), locations_(locations), count_(0)
     {
         const std::size_t words = (locations + 63) / 64;
@@ -97,16 +97,16 @@ public:
 // position within that location's values, which works because the spatial
 // dimensions lead and are contiguous
 template <typename T>
-class sparseAccessor
+class SparseAccessor
 {
 protected:
-    const locationMask &mask;
+    const LocationMask &mask;
     const T *values;
     Extent locations, elements;
     T zero;
 
 public:
-    sparseAccessor (const locationMask &mask, const T *values, const Extent elements, const T zero = T())
+    SparseAccessor (const LocationMask &mask, const T *values, const Extent elements, const T zero = T())
         : mask(mask), values(values), locations(mask.locations()), elements(elements), zero(zero) {}
 
     T operator[] (const Extent n) const
@@ -121,13 +121,13 @@ public:
 // A plain pointer wearing the same interface, so a kernel can be written once
 // against either
 template <typename T>
-class denseAccessor
+class DenseAccessor
 {
 protected:
     const T *values;
 
 public:
-    explicit denseAccessor (const T *values) : values(values) {}
+    explicit DenseAccessor (const T *values) : values(values) {}
     T operator[] (const Extent n) const { return values[n]; }
 };
 

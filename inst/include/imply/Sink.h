@@ -27,10 +27,10 @@ inline bool hasAttributes (SEXP x)
 //
 // The abstraction also leaves room for a file-backed sink, for results too
 // large to hold in memory, without any kernel having to change.
-class sink
+class Sink
 {
 public:
-    virtual ~sink () {}
+    virtual ~Sink () {}
 
     // Returns false if this sink cannot represent the value, in which case the
     // caller falls back to a list
@@ -41,7 +41,7 @@ public:
 
 // The fast path: a preallocated atomic vector holding results of uniform type
 // and length
-class vectorSink : public sink
+class VectorSink : public Sink
 {
 public:
     virtual R_xlen_t length () const = 0;
@@ -55,14 +55,14 @@ public:
 // iterator copies, rather than a switch over R's accessor macros repeated at
 // every use
 template <int RTYPE>
-class typedSink : public vectorSink
+class TypedSink : public VectorSink
 {
 protected:
     Rcpp::Vector<RTYPE> values;
     R_xlen_t elementLength;
 
 public:
-    typedSink (const R_xlen_t elementLength, const R_xlen_t count)
+    TypedSink (const R_xlen_t elementLength, const R_xlen_t count)
         : values(elementLength * count), elementLength(elementLength) {}
 
     R_xlen_t length () const { return elementLength; }
@@ -91,29 +91,29 @@ public:
 };
 
 // The one place a runtime storage type has to become a compile-time one
-inline std::unique_ptr<vectorSink> makeVectorSink (const SEXPTYPE type, const R_xlen_t elementLength,
+inline std::unique_ptr<VectorSink> makeVectorSink (const SEXPTYPE type, const R_xlen_t elementLength,
                                                    const R_xlen_t count)
 {
     switch (type)
     {
-        case LGLSXP:  return std::unique_ptr<vectorSink>(new typedSink<LGLSXP>(elementLength, count));
-        case INTSXP:  return std::unique_ptr<vectorSink>(new typedSink<INTSXP>(elementLength, count));
-        case REALSXP: return std::unique_ptr<vectorSink>(new typedSink<REALSXP>(elementLength, count));
-        case CPLXSXP: return std::unique_ptr<vectorSink>(new typedSink<CPLXSXP>(elementLength, count));
-        default:      return std::unique_ptr<vectorSink>();
+        case LGLSXP:  return std::unique_ptr<VectorSink>(new TypedSink<LGLSXP>(elementLength, count));
+        case INTSXP:  return std::unique_ptr<VectorSink>(new TypedSink<INTSXP>(elementLength, count));
+        case REALSXP: return std::unique_ptr<VectorSink>(new TypedSink<REALSXP>(elementLength, count));
+        case CPLXSXP: return std::unique_ptr<VectorSink>(new TypedSink<CPLXSXP>(elementLength, count));
+        default:      return std::unique_ptr<VectorSink>();
     }
 }
 
 // The general path, for results that vary in type, length or structure. This
 // is what base::apply() always does, so falling back to it costs nothing
 // relative to the status quo
-class listSink : public sink
+class ListSink : public Sink
 {
 protected:
     Rcpp::List values;
 
 public:
-    explicit listSink (const R_xlen_t count) : values(count) {}
+    explicit ListSink (const R_xlen_t count) : values(count) {}
 
     bool write (const R_xlen_t index, SEXP value)
     {

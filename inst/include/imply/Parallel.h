@@ -96,7 +96,7 @@ inline std::size_t chunkCount (const std::size_t items, const int threads,
 namespace internal {
 
 template <typename Functor>
-struct chunkContext
+struct ChunkContext
 {
     Functor *fn;
     std::size_t items, chunks;
@@ -128,11 +128,11 @@ inline void parallelFor (const std::size_t items, const int threads, Functor fn)
         return;
     }
 
-    internal::chunkContext<Functor> context { &fn, items, chunks };
+    internal::ChunkContext<Functor> context { &fn, items, chunks };
 
 #if defined(HAVE_LIBDISPATCH)
     dispatch_apply_f(chunks, DISPATCH_APPLY_AUTO, &context, [](void *raw, std::size_t index) {
-        static_cast<internal::chunkContext<Functor> *>(raw)->run(index);
+        static_cast<internal::ChunkContext<Functor> *>(raw)->run(index);
     });
 #elif defined(_OPENMP)
     const long count = static_cast<long>(chunks);

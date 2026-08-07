@@ -1,6 +1,6 @@
 #include <Rcpp.h>
 
-// Supplies Rcpp::wrap() for std::array, so a fixed-dimensionality raster's
+// Supplies Rcpp::wrap() for std::array, so a fixed-dimensionality Raster's
 // extents convert to R exactly as a dynamic one's std::vector does
 #include "RcppArray.h"
 
@@ -14,8 +14,8 @@ using namespace imply;
 
 namespace {
 
-template <typename Raster>
-Rcpp::List rasterInfoImpl (const Raster &r)
+template <typename RasterType>
+Rcpp::List rasterInfoImpl (const RasterType &r)
 {
     return Rcpp::List::create(
         Rcpp::Named("dim") = Rcpp::wrap(r.dim()),
@@ -26,16 +26,16 @@ Rcpp::List rasterInfoImpl (const Raster &r)
         Rcpp::Named("spatialSize") = static_cast<double>(r.spatialSize()),
         Rcpp::Named("elementSize") = static_cast<double>(r.elementSize()),
         Rcpp::Named("contiguous") = r.isContiguous(),
-        Rcpp::Named("fixed") = Raster::isFixed);
+        Rcpp::Named("fixed") = RasterType::isFixed);
 }
 
 // Sum along every line running in the given direction. Lines are enumerated
 // with the first remaining dimension moving fastest, which matches the order
 // base::apply() produces over the complementary margins
-template <typename Raster, typename Tag>
-SEXP lineSumsImpl (const Raster &r, const typename Tag::type *data, const int dim, Tag)
+template <typename RasterType, typename Tag>
+SEXP lineSumsImpl (const RasterType &r, const typename Tag::Type *data, const int dim, Tag)
 {
-    if constexpr (Tag::kind == storageType::complex)
+    if constexpr (Tag::kind == StorageType::complex)
     {
         Rcpp::stop("Complex data are not yet supported by lineSums()");
         return R_NilValue;
@@ -55,7 +55,7 @@ SEXP lineSumsImpl (const Raster &r, const typename Tag::type *data, const int di
 
             for (Extent j=0; j<n; j++)
             {
-                const typename Tag::type value = data[base + static_cast<Offset>(j*stride)];
+                const typename Tag::Type value = data[base + static_cast<Offset>(j*stride)];
                 if (Tag::isNA(value))
                 {
                     missing = true;
@@ -73,16 +73,16 @@ SEXP lineSumsImpl (const Raster &r, const typename Tag::type *data, const int di
 
 // Materialise a permuted view. Nothing is permuted in memory: the view carries
 // reordered strides, and the walk below reads through them
-template <typename Raster, typename Tag>
-SEXP permuteImpl (const Raster &r, const typename Tag::type *data, const std::vector<int> &order,
+template <typename RasterType, typename Tag>
+SEXP permuteImpl (const RasterType &r, const typename Tag::Type *data, const std::vector<int> &order,
                   const int threads, Tag)
 {
-    const Raster permuted = r.permute(order);
+    const RasterType permuted = r.permute(order);
 
     // Allocated here, on the main thread, because nothing inside the parallel
     // region below may touch the R API
     Rcpp::Vector<Tag::sexpType> result(static_cast<R_xlen_t>(permuted.size()));
-    typename Tag::type * const out = result.begin();
+    typename Tag::Type * const out = result.begin();
 
     // Each chunk owns a disjoint range of the output, so there is nothing to
     // synchronise and the result does not depend on how the work is divided
@@ -90,8 +90,8 @@ SEXP permuteImpl (const Raster &r, const typename Tag::type *data, const std::ve
         // Declared inside, so each worker has its own. Hoisting it out of the
         // inner loop still matters: building the index per element would cost
         // an allocation per element on the runtime-dimensionality path
-        typename Raster::index loc;
-        if constexpr (!Raster::isFixed)
+        typename RasterType::Index loc;
+        if constexpr (!RasterType::isFixed)
             loc.resize(permuted.nDims());
 
         for (Extent n=begin; n<end; n++)
@@ -110,13 +110,13 @@ SEXP permuteImpl (const Raster &r, const typename Tag::type *data, const std::ve
 // [[Rcpp::export]]
 SEXP rasterInfo (Rcpp::RObject x, Rcpp::Nullable<Rcpp::IntegerVector> spatial = R_NilValue, bool forceDynamic = false)
 {
-    const rasterSpec spec = specOf(x, spatial);
+    const RasterSpec spec = specOf(x, spatial);
 
     if (forceDynamic)
-        return rasterInfoImpl(dynamicRaster(spec.dims, spec.spatial));
+        return rasterInfoImpl(DynamicRaster(spec.dims, spec.spatial));
 
     return dispatchDims(spec.nDims(), [&](auto tag) -> SEXP {
-        return rasterInfoImpl(raster<decltype(tag)::value>(spec.dims, spec.spatial));
+        return rasterInfoImpl(Raster<decltype(tag)::value>(spec.dims, spec.spatial));
     });
 }
 
@@ -125,7 +125,7 @@ SEXP rasterInfo (Rcpp::RObject x, Rcpp::Nullable<Rcpp::IntegerVector> spatial = 
 // [[Rcpp::export]]
 SEXP flattenIndices (Rcpp::RObject x, Rcpp::IntegerMatrix locs, Rcpp::Nullable<Rcpp::IntegerVector> spatial = R_NilValue, bool forceDynamic = false)
 {
-    const rasterSpec spec = specOf(x, spatial);
+    const RasterSpec spec = specOf(x, spatial);
     const int nDims = spec.nDims();
 
     if (locs.ncol() != nDims)
@@ -135,7 +135,7 @@ SEXP flattenIndices (Rcpp::RObject x, Rcpp::IntegerMatrix locs, Rcpp::Nullable<R
     Rcpp::NumericVector result(nLocs);
 
     auto run = [&](const auto &r) {
-        typename std::decay_t<decltype(r)>::index loc;
+        typename std::decay_t<decltype(r)>::Index loc;
         if constexpr (!std::decay_t<decltype(r)>::isFixed)
             loc.resize(nDims);
 
@@ -153,10 +153,10 @@ SEXP flattenIndices (Rcpp::RObject x, Rcpp::IntegerMatrix locs, Rcpp::Nullable<R
     };
 
     if (forceDynamic)
-        run(dynamicRaster(spec.dims, spec.spatial));
+        run(DynamicRaster(spec.dims, spec.spatial));
     else
         dispatchDims(nDims, [&](auto tag) -> SEXP {
-            run(raster<decltype(tag)::value>(spec.dims, spec.spatial));
+            run(Raster<decltype(tag)::value>(spec.dims, spec.spatial));
             return R_NilValue;
         });
 
@@ -167,14 +167,14 @@ SEXP flattenIndices (Rcpp::RObject x, Rcpp::IntegerMatrix locs, Rcpp::Nullable<R
 // [[Rcpp::export]]
 SEXP expandIndices (Rcpp::RObject x, Rcpp::NumericVector indices, Rcpp::Nullable<Rcpp::IntegerVector> spatial = R_NilValue, bool forceDynamic = false)
 {
-    const rasterSpec spec = specOf(x, spatial);
+    const RasterSpec spec = specOf(x, spatial);
     const int nDims = spec.nDims();
 
     const R_xlen_t n = indices.size();
     Rcpp::IntegerMatrix result(n, nDims);
 
     auto run = [&](const auto &r) {
-        typename std::decay_t<decltype(r)>::index loc;
+        typename std::decay_t<decltype(r)>::Index loc;
         if constexpr (!std::decay_t<decltype(r)>::isFixed)
             loc.resize(nDims);
 
@@ -189,10 +189,10 @@ SEXP expandIndices (Rcpp::RObject x, Rcpp::NumericVector indices, Rcpp::Nullable
     };
 
     if (forceDynamic)
-        run(dynamicRaster(spec.dims, spec.spatial));
+        run(DynamicRaster(spec.dims, spec.spatial));
     else
         dispatchDims(nDims, [&](auto tag) -> SEXP {
-            run(raster<decltype(tag)::value>(spec.dims, spec.spatial));
+            run(Raster<decltype(tag)::value>(spec.dims, spec.spatial));
             return R_NilValue;
         });
 
@@ -202,7 +202,7 @@ SEXP expandIndices (Rcpp::RObject x, Rcpp::NumericVector indices, Rcpp::Nullable
 // [[Rcpp::export]]
 SEXP lineSums (Rcpp::RObject x, int dim, Rcpp::Nullable<Rcpp::IntegerVector> spatial = R_NilValue, bool forceDynamic = false)
 {
-    const rasterSpec spec = specOf(x, spatial);
+    const RasterSpec spec = specOf(x, spatial);
 
     if (dim < 1 || dim > spec.nDims())
         Rcpp::stop("Dimension %d is out of range", dim);
@@ -210,10 +210,10 @@ SEXP lineSums (Rcpp::RObject x, int dim, Rcpp::Nullable<Rcpp::IntegerVector> spa
 
     return dispatchType(x, [&](auto typeTag, auto *data) -> SEXP {
         if (forceDynamic)
-            return lineSumsImpl(dynamicRaster(spec.dims, spec.spatial), data, dim0, typeTag);
+            return lineSumsImpl(DynamicRaster(spec.dims, spec.spatial), data, dim0, typeTag);
 
         return dispatchDims(spec.nDims(), [&](auto dimTag) -> SEXP {
-            return lineSumsImpl(raster<decltype(dimTag)::value>(spec.dims, spec.spatial), data, dim0, typeTag);
+            return lineSumsImpl(Raster<decltype(dimTag)::value>(spec.dims, spec.spatial), data, dim0, typeTag);
         });
     });
 }
@@ -223,10 +223,10 @@ SEXP lineSums (Rcpp::RObject x, int dim, Rcpp::Nullable<Rcpp::IntegerVector> spa
 // [[Rcpp::export]]
 SEXP blockPartition (Rcpp::RObject x, Rcpp::Nullable<Rcpp::IntegerVector> spatial = R_NilValue, double targetElements = 65536, int count = 0)
 {
-    const rasterSpec spec = specOf(x, spatial);
-    const dynamicRaster r(spec.dims, spec.spatial);
+    const RasterSpec spec = specOf(x, spatial);
+    const DynamicRaster r(spec.dims, spec.spatial);
 
-    const std::vector<block> blocks = (count > 0
+    const std::vector<Block> blocks = (count > 0
         ? r.blocksForCount(static_cast<Extent>(count))
         : r.blocks(static_cast<Extent>(targetElements)));
 
@@ -260,7 +260,7 @@ SEXP chunkPartition (double items, int threads)
 // [[Rcpp::export]]
 SEXP permuteView (Rcpp::RObject x, Rcpp::IntegerVector order, Rcpp::Nullable<Rcpp::IntegerVector> spatial = R_NilValue, bool forceDynamic = false, int threads = 0)
 {
-    const rasterSpec spec = specOf(x, spatial);
+    const RasterSpec spec = specOf(x, spatial);
     const int nDims = spec.nDims();
 
     if (order.size() != nDims)
@@ -276,10 +276,10 @@ SEXP permuteView (Rcpp::RObject x, Rcpp::IntegerVector order, Rcpp::Nullable<Rcp
 
     return dispatchType(x, [&](auto typeTag, auto *data) -> SEXP {
         if (forceDynamic)
-            return permuteImpl(dynamicRaster(spec.dims, spec.spatial), data, order0, threads, typeTag);
+            return permuteImpl(DynamicRaster(spec.dims, spec.spatial), data, order0, threads, typeTag);
 
         return dispatchDims(nDims, [&](auto dimTag) -> SEXP {
-            return permuteImpl(raster<decltype(dimTag)::value>(spec.dims, spec.spatial), data, order0, threads, typeTag);
+            return permuteImpl(Raster<decltype(dimTag)::value>(spec.dims, spec.spatial), data, order0, threads, typeTag);
         });
     });
 }

@@ -14,7 +14,7 @@ namespace imply {
 // the narrow NIfTI-style types are added later, and are handled by converting
 // once per block during the gather rather than by instantiating every kernel
 // against every type
-enum class storageType
+enum class StorageType
 {
     logical, integer, real, complex
 };
@@ -22,50 +22,50 @@ enum class storageType
 // Type tags carry both the C type and the R storage mode, which matters
 // because logical and integer share a representation but not their notion of
 // missingness or their arithmetic
-struct logicalTag
+struct LogicalTag
 {
-    typedef int type;
-    static constexpr storageType kind = storageType::logical;
+    typedef int Type;
+    static constexpr StorageType kind = StorageType::logical;
     static constexpr int sexpType = LGLSXP;
-    static bool isNA (const type x) { return x == NA_LOGICAL; }
-    static type na () { return NA_LOGICAL; }
+    static bool isNA (const Type x) { return x == NA_LOGICAL; }
+    static Type na () { return NA_LOGICAL; }
     // NA is deliberately not zero, so a location holding one is kept when
     // an image is packed rather than being folded away
-    static bool isZero (const type x) { return x == 0; }
+    static bool isZero (const Type x) { return x == 0; }
 };
 
-struct integerTag
+struct IntegerTag
 {
-    typedef int type;
-    static constexpr storageType kind = storageType::integer;
+    typedef int Type;
+    static constexpr StorageType kind = StorageType::integer;
     static constexpr int sexpType = INTSXP;
-    static bool isNA (const type x) { return x == NA_INTEGER; }
-    static type na () { return NA_INTEGER; }
+    static bool isNA (const Type x) { return x == NA_INTEGER; }
+    static Type na () { return NA_INTEGER; }
     // NA is deliberately not zero, so a location holding one is kept when
     // an image is packed rather than being folded away
-    static bool isZero (const type x) { return x == 0; }
+    static bool isZero (const Type x) { return x == 0; }
 };
 
-struct realTag
+struct RealTag
 {
-    typedef double type;
-    static constexpr storageType kind = storageType::real;
+    typedef double Type;
+    static constexpr StorageType kind = StorageType::real;
     static constexpr int sexpType = REALSXP;
-    static bool isNA (const type x) { return ISNAN(x); }
-    static type na () { return NA_REAL; }
+    static bool isNA (const Type x) { return ISNAN(x); }
+    static Type na () { return NA_REAL; }
     // NA is deliberately not zero, so a location holding one is kept when
     // an image is packed rather than being folded away
-    static bool isZero (const type x) { return x == 0.0; }
+    static bool isZero (const Type x) { return x == 0.0; }
 };
 
-struct complexTag
+struct ComplexTag
 {
-    typedef Rcomplex type;
-    static constexpr storageType kind = storageType::complex;
+    typedef Rcomplex Type;
+    static constexpr StorageType kind = StorageType::complex;
     static constexpr int sexpType = CPLXSXP;
-    static bool isNA (const type x) { return ISNAN(x.r) || ISNAN(x.i); }
-    static type na () { Rcomplex z; z.r = NA_REAL; z.i = NA_REAL; return z; }
-    static bool isZero (const type x) { return x.r == 0.0 && x.i == 0.0; }
+    static bool isNA (const Type x) { return ISNAN(x.r) || ISNAN(x.i); }
+    static Type na () { Rcomplex z; z.r = NA_REAL; z.i = NA_REAL; return z; }
+    static bool isZero (const Type x) { return x.r == 0.0 && x.i == 0.0; }
 };
 
 // A non-owning typed window onto memory, which may belong to R or to us. This
@@ -73,17 +73,17 @@ struct complexTag
 // Construct it from the pointer dispatchType() hands over, or from an Rcpp
 // vector's begin()
 template <typename T>
-class view
+class View
 {
 protected:
     T *data_;
     Extent size_;
 
 public:
-    typedef T element;
+    typedef T Element;
 
-    view () : data_(nullptr), size_(0) {}
-    view (T *data, const Extent size) : data_(data), size_(size) {}
+    View () : data_(nullptr), size_(0) {}
+    View (T *data, const Extent size) : data_(data), size_(size) {}
 
     T * data () { return data_; }
     const T * data () const { return data_; }
@@ -101,16 +101,16 @@ public:
 
 // Owning storage, used only for intermediates that have no R counterpart
 template <typename T>
-class buffer
+class Buffer
 {
 protected:
     std::vector<T> data_;
 
 public:
-    typedef T element;
+    typedef T Element;
 
-    buffer () {}
-    explicit buffer (const Extent size, const T value = T()) : data_(size, value) {}
+    Buffer () {}
+    explicit Buffer (const Extent size, const T value = T()) : data_(size, value) {}
 
     T * data () { return data_.data(); }
     const T * data () const { return data_.data(); }
@@ -120,7 +120,7 @@ public:
     T & operator[] (const Extent n) { return data_[n]; }
     const T & operator[] (const Extent n) const { return data_[n]; }
 
-    view<T> asView () { return view<T>(data_.data(), data_.size()); }
+    View<T> asView () { return View<T>(data_.data(), data_.size()); }
 };
 
 } // namespace imply

@@ -8,12 +8,12 @@ using namespace imply;
 
 namespace {
 
-affine affineFrom (const Rcpp::NumericMatrix &m)
+Affine affineFrom (const Rcpp::NumericMatrix &m)
 {
     if (m.nrow() != 4 || m.ncol() != 4)
         Rcpp::stop("Transform matrix must be 4x4, not %dx%d", m.nrow(), m.ncol());
 
-    affine result;
+    Affine result;
     for (int i=0; i<4; i++)
     {
         for (int j=0; j<4; j++)
@@ -22,7 +22,7 @@ affine affineFrom (const Rcpp::NumericMatrix &m)
     return result;
 }
 
-Rcpp::NumericMatrix affineTo (const affine &a)
+Rcpp::NumericMatrix affineTo (const Affine &a)
 {
     Rcpp::NumericMatrix result(4, 4);
     for (int i=0; i<4; i++)
@@ -33,31 +33,31 @@ Rcpp::NumericMatrix affineTo (const affine &a)
     return result;
 }
 
-pointType parsePointType (const std::string &name)
+PointType parsePointType (const std::string &name)
 {
-    if (name == "voxel") return pointType::voxel;
-    if (name == "scaled") return pointType::scaled;
-    if (name == "world") return pointType::world;
+    if (name == "voxel") return PointType::voxel;
+    if (name == "scaled") return PointType::scaled;
+    if (name == "world") return PointType::world;
     Rcpp::stop("Point type should be \"voxel\", \"scaled\" or \"world\", not \"%s\"", name);
 }
 
-roundingType parseRoundingType (const std::string &name)
+RoundingType parseRoundingType (const std::string &name)
 {
-    if (name == "none") return roundingType::none;
-    if (name == "conventional") return roundingType::conventional;
-    if (name == "probabilistic") return roundingType::probabilistic;
+    if (name == "none") return RoundingType::none;
+    if (name == "conventional") return RoundingType::conventional;
+    if (name == "probabilistic") return RoundingType::probabilistic;
     Rcpp::stop("Rounding type should be \"none\", \"conventional\" or \"probabilistic\", not \"%s\"", name);
 }
 
-imageSpace spaceFrom (const Rcpp::NumericMatrix &xform, const Rcpp::NumericVector &pixdim)
+ImageSpace spaceFrom (const Rcpp::NumericMatrix &xform, const Rcpp::NumericVector &pixdim)
 {
     const std::vector<double> dims(pixdim.begin(), pixdim.end());
-    return imageSpace(static_cast<int>(dims.size()), dims, affineFrom(xform));
+    return ImageSpace(static_cast<int>(dims.size()), dims, affineFrom(xform));
 }
 
 // Points arrive as a matrix with one row per point and three columns
-Rcpp::NumericMatrix convertPoints (const Rcpp::NumericMatrix &locs, const imageSpace &space,
-                                   const bool toVoxel, const pointType type)
+Rcpp::NumericMatrix convertPoints (const Rcpp::NumericMatrix &locs, const ImageSpace &space,
+                                   const bool toVoxel, const PointType type)
 {
     if (locs.ncol() != 3)
         Rcpp::stop("Point matrix must have three columns, not %d", locs.ncol());
@@ -65,8 +65,8 @@ Rcpp::NumericMatrix convertPoints (const Rcpp::NumericMatrix &locs, const imageS
     Rcpp::NumericMatrix result(locs.nrow(), 3);
     for (R_xlen_t i=0; i<locs.nrow(); i++)
     {
-        const point source = { locs(i,0), locs(i,1), locs(i,2) };
-        const point converted = (toVoxel ? space.toVoxel(source, type) : space.fromVoxel(source, type));
+        const Point source = { locs(i,0), locs(i,1), locs(i,2) };
+        const Point converted = (toVoxel ? space.toVoxel(source, type) : space.fromVoxel(source, type));
         for (int j=0; j<3; j++)
             result(i,j) = converted[j];
     }
@@ -79,7 +79,7 @@ Rcpp::NumericMatrix convertPoints (const Rcpp::NumericMatrix &locs, const imageS
 // [[Rcpp::export]]
 std::string orientationFromXform (Rcpp::NumericMatrix xform)
 {
-    imageSpace space;
+    ImageSpace space;
     space.xform = affineFrom(xform);
     return space.orientation();
 }
@@ -111,7 +111,7 @@ Rcpp::NumericMatrix roundPoints (Rcpp::NumericMatrix locs, std::string round = "
     if (locs.ncol() != 3)
         Rcpp::stop("Point matrix must have three columns, not %d", locs.ncol());
 
-    const roundingType strategy = parseRoundingType(round);
+    const RoundingType strategy = parseRoundingType(round);
 
     std::vector<std::size_t> extents;
     if (bounds.isNotNull())
@@ -124,20 +124,20 @@ Rcpp::NumericMatrix roundPoints (Rcpp::NumericMatrix locs, std::string round = "
     // The generator is our own, so nothing here touches R's global RNG beyond
     // drawing a single seed. That keeps set.seed() in charge of reproducibility
     // while leaving the rounding itself safe to call from a worker thread
-    std::unique_ptr<randomGenerator> generator;
-    if (strategy == roundingType::probabilistic)
+    std::unique_ptr<RandomGenerator> generator;
+    if (strategy == RoundingType::probabilistic)
     {
         GetRNGstate();
         const std::uint64_t seed = static_cast<std::uint64_t>(unif_rand() * 9007199254740992.0);
         PutRNGstate();
-        generator.reset(new randomGenerator(seed));
+        generator.reset(new RandomGenerator(seed));
     }
 
     Rcpp::NumericMatrix result(locs.nrow(), 3);
     for (R_xlen_t i=0; i<locs.nrow(); i++)
     {
-        const point source = { locs(i,0), locs(i,1), locs(i,2) };
-        const point rounded = roundLocation(source, strategy, extentsPtr, generator.get());
+        const Point source = { locs(i,0), locs(i,1), locs(i,2) };
+        const Point rounded = roundLocation(source, strategy, extentsPtr, generator.get());
         for (int j=0; j<3; j++)
             result(i,j) = rounded[j];
     }

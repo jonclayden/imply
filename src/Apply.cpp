@@ -58,8 +58,8 @@ Rcpp::List applyImpl (const Accessor &source,
         }
     }
 
-    offsetWalker marginWalker(marginDims, marginStrides);
-    offsetWalker callWalker(callDims, callStrides);
+    OffsetWalker marginWalker(marginDims, marginStrides);
+    OffsetWalker callWalker(callDims, callStrides);
 
     // A worker may be given only part of the call space. Seeking straight to
     // its first call avoids walking everything before it
@@ -91,8 +91,8 @@ Rcpp::List applyImpl (const Accessor &source,
     // than a fresh call being constructed per iteration
     Rcpp::RObject call = Rf_lang2(fun, R_NilValue);
 
-    std::unique_ptr<vectorSink> fast;
-    std::unique_ptr<listSink> general;
+    std::unique_ptr<VectorSink> fast;
+    std::unique_ptr<ListSink> general;
 
     for (R_xlen_t k=0; k<nCalls; k++)
     {
@@ -120,7 +120,7 @@ Rcpp::List applyImpl (const Accessor &source,
             if (usable)
                 fast = makeVectorSink(type, Rf_xlength(value), nCalls);
             if (fast == nullptr)
-                general.reset(new listSink(nCalls));
+                general.reset(new ListSink(nCalls));
         }
 
         if (fast != nullptr)
@@ -129,7 +129,7 @@ Rcpp::List applyImpl (const Accessor &source,
             {
                 // Something no longer fits the preallocated vector, so move
                 // what has been written into a list and carry on there
-                general.reset(new listSink(nCalls));
+                general.reset(new ListSink(nCalls));
                 for (R_xlen_t j=0; j<k; j++)
                     general->write(j, fast->element(j));
                 general->write(k, value);
@@ -148,7 +148,7 @@ Rcpp::List applyImpl (const Accessor &source,
                                   Rcpp::Named("isList") = false);
 
     if (general == nullptr)
-        general.reset(new listSink(nCalls));
+        general.reset(new ListSink(nCalls));
 
     return Rcpp::List::create(Rcpp::Named("values") = general->finish(),
                               Rcpp::Named("elementLength") = NA_REAL,
@@ -199,7 +199,7 @@ Rcpp::List applyOverMargin (Rcpp::RObject x, Rcpp::IntegerVector margin, Rcpp::F
     Rcpp::List result;
     dispatchType(x, [&](auto tag, auto *data) -> SEXP {
         typedef decltype(tag) Tag;
-        result = applyImpl(denseAccessor<typename Tag::type>(data), dims, margin0, fun, names, simplify,
+        result = applyImpl(DenseAccessor<typename Tag::Type>(data), dims, margin0, fun, names, simplify,
                            static_cast<R_xlen_t>(from), static_cast<R_xlen_t>(to), tag);
         return R_NilValue;
     });
@@ -224,9 +224,9 @@ Rcpp::List applyOverMarginPacked (Rcpp::RawVector values, std::string type, Rcpp
     Rcpp::List result;
     dispatchNarrowType(narrowTypeFromName(type), [&](auto stored) -> SEXP {
         typedef decltype(stored) Stored;
-        result = applyImpl(narrowAccessor<Stored>(values.begin(), slope, intercept),
+        result = applyImpl(NarrowAccessor<Stored>(values.begin(), slope, intercept),
                            dims, margin0, fun, names, simplify,
-                           static_cast<R_xlen_t>(from), static_cast<R_xlen_t>(to), realTag());
+                           static_cast<R_xlen_t>(from), static_cast<R_xlen_t>(to), RealTag());
         return R_NilValue;
     });
 
@@ -251,12 +251,12 @@ Rcpp::List applyOverMarginSparse (Rcpp::RawVector mask, Rcpp::RObject values, Rc
     for (std::size_t i=spatial; i<dims.size(); i++)
         elements *= dims[i];
 
-    const locationMask bits(mask, locations);
+    const LocationMask bits(mask, locations);
 
     Rcpp::List result;
     dispatchType(values, [&](auto tag, auto *packed) -> SEXP {
         typedef decltype(tag) Tag;
-        result = applyImpl(sparseAccessor<typename Tag::type>(bits, packed, elements),
+        result = applyImpl(SparseAccessor<typename Tag::Type>(bits, packed, elements),
                            dims, margin0, fun, names, simplify,
                            static_cast<R_xlen_t>(from), static_cast<R_xlen_t>(to), tag);
         return R_NilValue;

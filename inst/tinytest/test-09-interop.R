@@ -101,8 +101,8 @@ for (header in c("Raster.h", "Space.h", "Blocks.h", "Parallel.h", "Sparse.h", "N
 
 ## Space.h carries its own definitions, so there is nothing to link against
 space <- readLines(file.path(headers, "imply", "Space.h"))
-expect_true(any(grepl("^inline .*imageSpace::orientation", space)))
-expect_true(any(grepl("^inline .*affine::inverse", space)))
+expect_true(any(grepl("^inline .*ImageSpace::orientation", space)))
+expect_true(any(grepl("^inline .*Affine::inverse", space)))
 
 ## Raster.h is free of any dependency on R, so it can be used on its own
 raster <- readLines(file.path(headers, "imply", "Raster.h"))

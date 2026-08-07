@@ -20,14 +20,14 @@ namespace imply {
 // reproducibility. To keep results independent of how work is divided between
 // threads, a parallel caller should seed one generator per fixed-size block
 // from the block's position, rather than one per thread
-class randomGenerator
+class RandomGenerator
 {
 protected:
     std::mt19937_64 engine;
     std::uniform_real_distribution<double> distribution;
 
 public:
-    explicit randomGenerator (const std::uint64_t seed)
+    explicit RandomGenerator (const std::uint64_t seed)
         : engine(seed), distribution(0.0, 1.0) {}
 
     // Uniform on [0,1), matching the convention of R's unif_rand()
@@ -38,28 +38,28 @@ public:
 
 // Location conventions: voxel-indexed, scaled for voxel dimensions only (as
 // with a diagonal xform), or world coordinates fully respecting the xform
-enum class pointType { voxel, scaled, world };
+enum class PointType { voxel, scaled, world };
 
 // Rounding strategies: none, standard for nearest-neighbour, or probabilistic
 // for stochastic nearest neighbour (probabilities proportional to distance)
-enum class roundingType { none, conventional, probabilistic };
+enum class RoundingType { none, conventional, probabilistic };
 
-typedef std::array<double,3> point;
+typedef std::array<double,3> Point;
 
 // A 4x4 affine transform, stored row-major. Only the affine case is supported,
 // meaning the final row is implicitly (0,0,0,1), which is what makes the
 // inverse cheap and exact
-class affine
+class Affine
 {
 protected:
     std::array<double,16> values;
 
 public:
-    affine () { values.fill(0.0); }
+    Affine () { values.fill(0.0); }
 
-    static affine identity ()
+    static Affine identity ()
     {
-        affine result;
+        Affine result;
         for (int i=0; i<4; i++)
             result(i,i) = 1.0;
         return result;
@@ -67,9 +67,9 @@ public:
 
     // A diagonal transform built from voxel dimensions, used when an image
     // carries no explicit transform of its own
-    static affine scaling (const std::vector<double> &pixdim)
+    static Affine scaling (const std::vector<double> &pixdim)
     {
-        affine result = identity();
+        Affine result = identity();
         for (std::size_t i=0; i<3 && i<pixdim.size(); i++)
             result(static_cast<int>(i), static_cast<int>(i)) = pixdim[i];
         return result;
@@ -82,9 +82,9 @@ public:
 
     // Apply to a position, which is treated as having an implicit fourth
     // component of one so that the translation is included
-    point multiply (const point &p) const
+    Point multiply (const Point &p) const
     {
-        point result;
+        Point result;
         for (int i=0; i<3; i++)
             result[i] = (*this)(i,0)*p[0] + (*this)(i,1)*p[1] + (*this)(i,2)*p[2] + (*this)(i,3);
         return result;
@@ -101,28 +101,28 @@ public:
 
     // Inverse of [R t; 0 1] is [R^-1, -R^-1 t; 0 1], so only the 3x3 block has
     // to be inverted. Throws if that block is singular
-    affine inverse () const;
+    Affine inverse () const;
 };
 
 // The geometry of the space an image is embedded within. Deliberately free of
 // any dependency on a file format: it holds only what the mapping needs, and
 // NIfTI or other interop is layered on top
-class imageSpace
+class ImageSpace
 {
 public:
     int spatial;
     std::vector<double> pixdim;
-    affine xform;
+    Affine xform;
     std::string spaceUnit, timeUnit;
 
-    imageSpace ()
-        : spatial(0), xform(affine::identity()), spaceUnit("unknown"), timeUnit("unknown") {}
+    ImageSpace ()
+        : spatial(0), xform(Affine::identity()), spaceUnit("unknown"), timeUnit("unknown") {}
 
-    imageSpace (const int spatial, const std::vector<double> &pixdim)
-        : spatial(spatial), pixdim(pixdim), xform(affine::scaling(pixdim)),
+    ImageSpace (const int spatial, const std::vector<double> &pixdim)
+        : spatial(spatial), pixdim(pixdim), xform(Affine::scaling(pixdim)),
           spaceUnit("unknown"), timeUnit("unknown") {}
 
-    imageSpace (const int spatial, const std::vector<double> &pixdim, const affine &xform)
+    ImageSpace (const int spatial, const std::vector<double> &pixdim, const Affine &xform)
         : spatial(spatial), pixdim(pixdim), xform(xform),
           spaceUnit("unknown"), timeUnit("unknown") {}
 
@@ -132,10 +132,10 @@ public:
     std::string orientation () const;
 
     // Convert a point of the given type to voxel coordinates
-    point toVoxel (const point &p, const pointType type) const;
+    Point toVoxel (const Point &p, const PointType type) const;
 
     // The reverse: voxel coordinates to a point of the given type
-    point fromVoxel (const point &p, const pointType type) const;
+    Point fromVoxel (const Point &p, const PointType type) const;
 };
 
 // Rounding is kept separate from coordinate conversion, which the original
@@ -145,31 +145,31 @@ public:
 // The generator is passed in rather than being global, so this is safe to call
 // from a worker thread provided each thread owns its generator. It is only
 // consulted by the probabilistic strategy, and may be null otherwise
-point roundLocation (const point &p, const roundingType round,
+Point roundLocation (const Point &p, const RoundingType round,
                      const std::vector<std::size_t> *bounds = nullptr,
-                     randomGenerator *generator = nullptr);
+                     RandomGenerator *generator = nullptr);
 
 // Definitions are inline and live here rather than in a source file, so
 // that a package linking to imply needs only the headers
-inline double affine::determinant3 () const
+inline double Affine::determinant3 () const
 {
-    const affine &m = *this;
+    const Affine &m = *this;
     return m(0,0) * (m(1,1)*m(2,2) - m(1,2)*m(2,1))
          - m(0,1) * (m(1,0)*m(2,2) - m(1,2)*m(2,0))
          + m(0,2) * (m(1,0)*m(2,1) - m(1,1)*m(2,0));
 }
 
-inline affine affine::inverse () const
+inline Affine Affine::inverse () const
 {
     if (!isAffine())
         Rcpp::stop("Only affine transforms can be inverted this way");
 
-    const affine &m = *this;
+    const Affine &m = *this;
     const double det = determinant3();
     if (std::fabs(det) < 1e-12)
         Rcpp::stop("Transform matrix is singular and cannot be inverted");
 
-    affine result;
+    Affine result;
 
     // Inverse of the 3x3 block, by the adjugate
     result(0,0) = (m(1,1)*m(2,2) - m(1,2)*m(2,1)) / det;
@@ -190,7 +190,7 @@ inline affine affine::inverse () const
     return result;
 }
 
-inline std::string imageSpace::orientation () const
+inline std::string ImageSpace::orientation () const
 {
     // Column j of the 3x3 block is the world-space direction along which voxel
     // axis j increases, so each voxel axis has to be matched to the anatomical
@@ -244,16 +244,16 @@ inline std::string imageSpace::orientation () const
     return result;
 }
 
-inline point imageSpace::toVoxel (const point &p, const pointType type) const
+inline Point ImageSpace::toVoxel (const Point &p, const PointType type) const
 {
-    point result = p;
+    Point result = p;
 
     switch (type)
     {
-        case pointType::voxel:
+        case PointType::voxel:
         break;
 
-        case pointType::scaled:
+        case PointType::scaled:
         for (int i=0; i<3; i++)
         {
             const double scale = (i < static_cast<int>(pixdim.size()) ? std::fabs(pixdim[i]) : 1.0);
@@ -264,7 +264,7 @@ inline point imageSpace::toVoxel (const point &p, const pointType type) const
         // The stored transform maps voxel coordinates to world coordinates, so
         // going the other way needs its inverse. The version this was ported
         // from applied the forward transform here, which was a bug
-        case pointType::world:
+        case PointType::world:
         result = xform.inverse().multiply(p);
         break;
     }
@@ -272,16 +272,16 @@ inline point imageSpace::toVoxel (const point &p, const pointType type) const
     return result;
 }
 
-inline point imageSpace::fromVoxel (const point &p, const pointType type) const
+inline Point ImageSpace::fromVoxel (const Point &p, const PointType type) const
 {
-    point result = p;
+    Point result = p;
 
     switch (type)
     {
-        case pointType::voxel:
+        case PointType::voxel:
         break;
 
-        case pointType::scaled:
+        case PointType::scaled:
         for (int i=0; i<3; i++)
         {
             const double scale = (i < static_cast<int>(pixdim.size()) ? std::fabs(pixdim[i]) : 1.0);
@@ -289,7 +289,7 @@ inline point imageSpace::fromVoxel (const point &p, const pointType type) const
         }
         break;
 
-        case pointType::world:
+        case PointType::world:
         result = xform.multiply(p);
         break;
     }
@@ -297,26 +297,26 @@ inline point imageSpace::fromVoxel (const point &p, const pointType type) const
     return result;
 }
 
-inline point roundLocation (const point &p, const roundingType round, const std::vector<std::size_t> *bounds,
-                     randomGenerator *generator)
+inline Point roundLocation (const Point &p, const RoundingType round, const std::vector<std::size_t> *bounds,
+                     RandomGenerator *generator)
 {
-    point result = p;
+    Point result = p;
 
     switch (round)
     {
-        case roundingType::none:
+        case RoundingType::none:
         break;
 
         // nearbyint rather than round, so that a coordinate falling exactly
         // halfway breaks to even, matching R's round(). The code this was
         // ported from used std::round, which breaks away from zero and so
         // disagrees with R on values like 4.5
-        case roundingType::conventional:
+        case RoundingType::conventional:
         for (int i=0; i<3; i++)
             result[i] = std::nearbyint(p[i]);
         break;
 
-        case roundingType::probabilistic:
+        case RoundingType::probabilistic:
         if (generator == nullptr)
             Rcpp::stop("Probabilistic rounding requires a random number generator");
 

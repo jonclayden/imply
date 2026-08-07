@@ -19,39 +19,39 @@ namespace {
 // Reductions that can be computed in one pass, without an R callback. This is
 // the tier that genuinely parallelises: an R function cannot be called from a
 // worker thread, but none of these touch R at all
-enum class reduction
+enum class Reduction
 {
     sum, mean, minimum, maximum, range, product, variance, deviation,
     whichMinimum, whichMaximum, any, all, countNA
 };
 
-reduction reductionFromName (const std::string &name)
+Reduction reductionFromName (const std::string &name)
 {
-    if (name == "sum")      return reduction::sum;
-    if (name == "mean")     return reduction::mean;
-    if (name == "min")      return reduction::minimum;
-    if (name == "max")      return reduction::maximum;
-    if (name == "range")    return reduction::range;
-    if (name == "prod")     return reduction::product;
-    if (name == "var")      return reduction::variance;
-    if (name == "sd")       return reduction::deviation;
-    if (name == "which.min") return reduction::whichMinimum;
-    if (name == "which.max") return reduction::whichMaximum;
-    if (name == "any")      return reduction::any;
-    if (name == "all")      return reduction::all;
-    if (name == "countNA")  return reduction::countNA;
+    if (name == "sum")      return Reduction::sum;
+    if (name == "mean")     return Reduction::mean;
+    if (name == "min")      return Reduction::minimum;
+    if (name == "max")      return Reduction::maximum;
+    if (name == "range")    return Reduction::range;
+    if (name == "prod")     return Reduction::product;
+    if (name == "var")      return Reduction::variance;
+    if (name == "sd")       return Reduction::deviation;
+    if (name == "which.min") return Reduction::whichMinimum;
+    if (name == "which.max") return Reduction::whichMaximum;
+    if (name == "any")      return Reduction::any;
+    if (name == "all")      return Reduction::all;
+    if (name == "countNA")  return Reduction::countNA;
     Rcpp::stop("Unknown reduction \"%s\"", name);
 }
 
 // How many values each call contributes to the result
-int reductionWidth (const reduction what)
+int reductionWidth (const Reduction what)
 {
-    return (what == reduction::range ? 2 : 1);
+    return (what == Reduction::range ? 2 : 1);
 }
 
 // Everything accumulates in double, whatever the values were stored as, so
 // the answer does not depend on the storage type and error does not compound
-struct accumulator
+struct Accumulator
 {
     double total = 0.0;
     double sumSquares = 0.0;
@@ -84,7 +84,7 @@ struct accumulator
     }
 };
 
-void writeResult (const accumulator &a, const reduction what, const bool naRm,
+void writeResult (const Accumulator &a, const Reduction what, const bool naRm,
                   double * const out, const R_xlen_t position, const int width)
 {
     const bool spoiled = (a.missing > 0 && !naRm);
@@ -92,7 +92,7 @@ void writeResult (const accumulator &a, const reduction what, const bool naRm,
 
     double first = NA_REAL, second = NA_REAL;
 
-    if (what == reduction::countNA)
+    if (what == Reduction::countNA)
         first = static_cast<double>(a.missing);
     else if (spoiled)
         ; // leave as NA
@@ -100,19 +100,19 @@ void writeResult (const accumulator &a, const reduction what, const bool naRm,
     {
         switch (what)
         {
-            case reduction::sum:      first = a.total; break;
-            case reduction::product:  first = (empty ? 1.0 : a.product); break;
-            case reduction::mean:     first = (empty ? R_NaN : a.total / double(a.used)); break;
-            case reduction::minimum:  first = (empty ? R_PosInf : a.low); break;
-            case reduction::maximum:  first = (empty ? R_NegInf : a.high); break;
+            case Reduction::sum:      first = a.total; break;
+            case Reduction::product:  first = (empty ? 1.0 : a.product); break;
+            case Reduction::mean:     first = (empty ? R_NaN : a.total / double(a.used)); break;
+            case Reduction::minimum:  first = (empty ? R_PosInf : a.low); break;
+            case Reduction::maximum:  first = (empty ? R_NegInf : a.high); break;
 
-            case reduction::range:
+            case Reduction::range:
             first = (empty ? R_PosInf : a.low);
             second = (empty ? R_NegInf : a.high);
             break;
 
-            case reduction::variance:
-            case reduction::deviation:
+            case Reduction::variance:
+            case Reduction::deviation:
             {
                 if (a.used < 2)
                     first = NA_REAL;
@@ -127,18 +127,18 @@ void writeResult (const accumulator &a, const reduction what, const bool naRm,
                     double value = (a.sumSquares - n * mean * mean) / (n - 1.0);
                     if (value < 0.0)
                         value = 0.0;
-                    first = (what == reduction::deviation ? std::sqrt(value) : value);
+                    first = (what == Reduction::deviation ? std::sqrt(value) : value);
                 }
                 break;
             }
 
             // Positions are one-based, as R reports them
-            case reduction::whichMinimum: first = (empty ? NA_REAL : double(a.lowAt) + 1.0); break;
-            case reduction::whichMaximum: first = (empty ? NA_REAL : double(a.highAt) + 1.0); break;
+            case Reduction::whichMinimum: first = (empty ? NA_REAL : double(a.lowAt) + 1.0); break;
+            case Reduction::whichMaximum: first = (empty ? NA_REAL : double(a.highAt) + 1.0); break;
 
-            case reduction::any: first = (a.anyTrue ? 1.0 : 0.0); break;
-            case reduction::all: first = (a.allTrue ? 1.0 : 0.0); break;
-            case reduction::countNA: break;
+            case Reduction::any: first = (a.anyTrue ? 1.0 : 0.0); break;
+            case Reduction::all: first = (a.allTrue ? 1.0 : 0.0); break;
+            case Reduction::countNA: break;
         }
     }
 
@@ -146,9 +146,9 @@ void writeResult (const accumulator &a, const reduction what, const bool naRm,
     // value only matters when it could change the answer
     if (!naRm && a.missing > 0)
     {
-        if (what == reduction::any)
+        if (what == Reduction::any)
             first = (a.anyTrue ? 1.0 : NA_REAL);
-        else if (what == reduction::all)
+        else if (what == Reduction::all)
             first = (a.allTrue ? NA_REAL : 0.0);
     }
 
@@ -162,7 +162,7 @@ void writeResult (const accumulator &a, const reduction what, const bool naRm,
 // threads
 template <typename Accessor>
 void reduceImpl (const Accessor &source, const std::vector<Extent> &dims,
-                 const std::vector<int> &margin, const reduction what, const bool naRm,
+                 const std::vector<int> &margin, const Reduction what, const bool naRm,
                  const int threads, double * const out)
 {
     const int nDims = static_cast<int>(dims.size());
@@ -194,16 +194,16 @@ void reduceImpl (const Accessor &source, const std::vector<Extent> &dims,
         }
     }
 
-    const offsetWalker marginTemplate(marginDims, marginStrides);
-    const offsetWalker callTemplate(callDims, callStrides);
+    const OffsetWalker marginTemplate(marginDims, marginStrides);
+    const OffsetWalker callTemplate(callDims, callStrides);
     const Extent nCalls = marginTemplate.size();
     const int width = reductionWidth(what);
 
     // Each chunk owns a disjoint run of calls and writes only its own slice of
     // the output, so there is nothing to synchronise
     parallelFor(nCalls, threads, [&](const Extent begin, const Extent end) {
-        offsetWalker margins = marginTemplate;
-        offsetWalker values = callTemplate;
+        OffsetWalker margins = marginTemplate;
+        OffsetWalker values = callTemplate;
         margins.seek(begin);
 
         for (Extent k=begin; k<end; k++)
@@ -211,7 +211,7 @@ void reduceImpl (const Accessor &source, const std::vector<Extent> &dims,
             const Offset base = margins.offset();
             const Extent n = values.size();
 
-            accumulator a;
+            Accumulator a;
             values.reset();
             for (Extent i=0; i<n; i++)
             {
@@ -266,16 +266,16 @@ Rcpp::NumericVector reduceOverMargin (Rcpp::RObject x, Rcpp::IntegerVector margi
     const std::vector<Extent> dims = dimsOf(x);
     checkLength(x, dims);
     const std::vector<int> margin0 = checkMargin(margin, static_cast<int>(dims.size()));
-    const reduction kind = reductionFromName(what);
+    const Reduction kind = reductionFromName(what);
 
     Rcpp::NumericVector result(static_cast<R_xlen_t>(callCount(dims, margin0)) * reductionWidth(kind));
 
     dispatchType(x, [&](auto tag, auto *data) -> SEXP {
         typedef decltype(tag) Tag;
-        if constexpr (Tag::kind == storageType::complex)
+        if constexpr (Tag::kind == StorageType::complex)
             Rcpp::stop("Complex data are not supported by imreduce()");
         else
-            reduceImpl(denseAccessor<typename Tag::type>(data), dims, margin0, kind, naRm,
+            reduceImpl(DenseAccessor<typename Tag::Type>(data), dims, margin0, kind, naRm,
                        threads, result.begin());
         return R_NilValue;
     });
@@ -291,13 +291,13 @@ Rcpp::NumericVector reduceOverMarginPacked (Rcpp::RawVector values, std::string 
 {
     const std::vector<Extent> dims(dim.begin(), dim.end());
     const std::vector<int> margin0 = checkMargin(margin, static_cast<int>(dims.size()));
-    const reduction kind = reductionFromName(what);
+    const Reduction kind = reductionFromName(what);
 
     Rcpp::NumericVector result(static_cast<R_xlen_t>(callCount(dims, margin0)) * reductionWidth(kind));
 
     dispatchNarrowType(narrowTypeFromName(type), [&](auto stored) -> SEXP {
         typedef decltype(stored) Stored;
-        reduceImpl(narrowAccessor<Stored>(values.begin(), slope, intercept), dims, margin0, kind,
+        reduceImpl(NarrowAccessor<Stored>(values.begin(), slope, intercept), dims, margin0, kind,
                    naRm, threads, result.begin());
         return R_NilValue;
     });
@@ -313,7 +313,7 @@ Rcpp::NumericVector reduceOverMarginSparse (Rcpp::RawVector mask, Rcpp::RObject 
 {
     const std::vector<Extent> dims(dim.begin(), dim.end());
     const std::vector<int> margin0 = checkMargin(margin, static_cast<int>(dims.size()));
-    const reduction kind = reductionFromName(what);
+    const Reduction kind = reductionFromName(what);
 
     Extent locations = 1, elements = 1;
     for (int i=0; i<spatial; i++)
@@ -321,15 +321,15 @@ Rcpp::NumericVector reduceOverMarginSparse (Rcpp::RawVector mask, Rcpp::RObject 
     for (std::size_t i=spatial; i<dims.size(); i++)
         elements *= dims[i];
 
-    const locationMask bits(mask, locations);
+    const LocationMask bits(mask, locations);
     Rcpp::NumericVector result(static_cast<R_xlen_t>(callCount(dims, margin0)) * reductionWidth(kind));
 
     dispatchType(values, [&](auto tag, auto *packed) -> SEXP {
         typedef decltype(tag) Tag;
-        if constexpr (Tag::kind == storageType::complex)
+        if constexpr (Tag::kind == StorageType::complex)
             Rcpp::stop("Complex data are not supported by imreduce()");
         else
-            reduceImpl(sparseAccessor<typename Tag::type>(bits, packed, elements), dims, margin0,
+            reduceImpl(SparseAccessor<typename Tag::Type>(bits, packed, elements), dims, margin0,
                        kind, naRm, threads, result.begin());
         return R_NilValue;
     });

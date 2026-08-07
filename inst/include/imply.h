@@ -11,25 +11,25 @@
 //
 // The pieces most likely to be wanted from outside are:
 //
-//   raster<D>        an n-dimensional index space with general strides, split
-//                    into spatial and value dimensions. Use fixedRaster<D>
+//   Raster<D>        an n-dimensional index space with general strides, split
+//                    into spatial and value dimensions. Use FixedRaster<D>
 //                    where the dimensionality is known when compiling, which
-//                    keeps extents and indices on the stack, and dynamicRaster
+//                    keeps extents and indices on the stack, and DynamicRaster
 //                    where it is not
 //
-//   imageSpace       voxel-to-world geometry, with no dependency on any file
+//   ImageSpace       voxel-to-world geometry, with no dependency on any file
 //                    format, plus the point conversions and rounding
 //                    strategies that go with it
 //
-//   offsetWalker     traversal of an arbitrary subset of dimensions, yielding
+//   OffsetWalker     traversal of an arbitrary subset of dimensions, yielding
 //                    memory offsets without materialising an index
 //
 //   parallelFor      work division over libdispatch, OpenMP or neither
 //
-//   locationMask     a bitset over spatial locations with O(1) rank, and the
-//   sparseAccessor   accessor that reads packed values as though dense
+//   LocationMask     a bitset over spatial locations with O(1) rank, and the
+//   SparseAccessor   accessor that reads packed values as though dense
 //
-//   narrowAccessor   reads NIfTI-style narrow storage as double
+//   NarrowAccessor   reads NIfTI-style narrow storage as double
 //
 // The accessors share one interface deliberately: a kernel written against
 // it serves dense, sparse and narrowly-stored images alike.

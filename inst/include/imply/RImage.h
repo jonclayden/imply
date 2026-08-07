@@ -79,7 +79,7 @@ inline void checkLength (const Rcpp::RObject &x, const std::vector<Extent> &dims
 }
 
 // The three steps above are always taken together, so bundle them
-struct rasterSpec
+struct RasterSpec
 {
     std::vector<Extent> dims;
     int spatial;
@@ -87,9 +87,9 @@ struct rasterSpec
     int nDims () const { return static_cast<int>(dims.size()); }
 };
 
-inline rasterSpec specOf (const Rcpp::RObject &x, const Rcpp::Nullable<Rcpp::IntegerVector> &spatial)
+inline RasterSpec specOf (const Rcpp::RObject &x, const Rcpp::Nullable<Rcpp::IntegerVector> &spatial)
 {
-    rasterSpec spec;
+    RasterSpec spec;
     spec.dims = dimsOf(x);
     checkLength(x, spec.dims);
     spec.spatial = spatialOf(x, spatial, spec.nDims());
