@@ -42,6 +42,10 @@
 #'   function of `(done, total)`. See [progress].
 #' @param axis For `lineApply()`, the axis lines run along; for `sliceApply()`,
 #'   the axis slices are cut across.
+#' @param mask For `voxelApply()`, a logical array over the spatial dimensions,
+#'   a sparse image whose mask is to be used, or `NULL` for none. Locations
+#'   outside it are not visited at all.
+#' @param fill The value given to locations outside `mask`.
 #' @return For `imapply()`, as [base::apply()]. For `voxelApply()`, an image
 #'   when the function returns a single value per location, otherwise an array.
 #' @name imapply
@@ -202,7 +206,8 @@ unclassArray <- function (x)
 
 #' @rdname imapply
 #' @export
-voxelApply <- function (x, fun, ..., simplify = TRUE, threads = NULL, progress = FALSE)
+voxelApply <- function (x, fun, ..., mask = NULL, fill = 0, simplify = TRUE,
+                        threads = NULL, progress = FALSE)
 {
     nSpatial <- spatial(x)
     dims <- dim(x)
@@ -213,6 +218,10 @@ voxelApply <- function (x, fun, ..., simplify = TRUE, threads = NULL, progress =
         stop("Image has no spatial dimensions to apply over")
     if (nSpatial == length(dims))
         stop("Image holds a single value at each location, so there is nothing to apply over")
+
+    if (!is.null(mask))
+        return(maskedVoxelApply(x, fun, ..., mask = mask, fill = fill, simplify = simplify,
+                                threads = threads, progress = progress))
 
     result <- imapply(x, seq_len(nSpatial), fun, ..., simplify = simplify, threads = threads, progress = progress)
 
@@ -265,4 +274,96 @@ sliceApply <- function (x, fun, ..., axis = 3L, simplify = TRUE, threads = NULL,
     ## Only the axis is retained, so fun sees the plane cut across it, together
     ## with the values at each of its locations
     imapply(x, axis, fun, ..., simplify = simplify, threads = threads, progress = progress)
+}
+
+
+## Applying only where a mask holds.
+##
+## Nothing is gained by walking a sparse image and gathering zeros for the
+## locations it does not store: that still makes one call per location. What
+## saves the work is doing the loop in the packed space, over a matrix with one
+## column per selected location, and scattering the answers back afterwards.
+##
+## When the image is already sparse and the mask is its own, that matrix is the
+## stored values themselves and costs nothing. Otherwise the selected values
+## are gathered once.
+maskedVoxelApply <- function (x, fun, ..., mask, fill, simplify, threads, progress)
+{
+    dims <- dim(x)
+    if (is.null(dims))
+        dims <- length(x)
+    nSpatial <- spatial(x)
+    spatialDims <- dims[seq_len(nSpatial)]
+    nLocations <- prod(spatialDims)
+
+    selected <- asMaskVector(mask, spatialDims)
+    index <- which(selected)
+
+    if (length(index) == 0L)
+        stop("Mask selects no locations")
+
+    input <- maskedInput(x, selected, index, nLocations, dims, nSpatial)
+    result <- imapply(input$data, input$margin, fun, ..., simplify = simplify,
+                      threads = threads, progress = progress)
+
+    scatterMasked(result, index, spatialDims, length(index), fill, x, nSpatial)
+}
+
+## A mask may be given as a logical array, a sparse image whose own mask is
+## wanted, or anything numeric where non-zero means selected
+asMaskVector <- function (mask, spatialDims)
+{
+    if (isSparseImage(mask))
+        mask <- mask(mask)
+
+    if (is.logical(mask))
+        selected <- as.vector(mask)
+    else if (is.numeric(mask))
+        selected <- as.vector(mask) != 0
+    else
+        stop("Mask must be a logical array, a numeric array, or a sparse image")
+
+    if (anyNA(selected))
+        stop("Mask must not contain missing values")
+    if (length(selected) != prod(spatialDims))
+        stop("Mask must have one element per spatial location (", prod(spatialDims), ")")
+
+    selected
+}
+
+## The selected values, and the margin to apply over. Both layouts hand the
+## function the same vector; they differ only in which is cheaper to produce
+maskedInput <- function (x, selected, index, nLocations, dims, nSpatial)
+{
+    elements <- if (nSpatial < length(dims)) prod(dims[-seq_len(nSpatial)]) else 1L
+
+    ## The values a sparse image already holds, if they are the ones asked for
+    if (isSparseImage(x) && identical(as.vector(mask(x)), selected))
+        return(list(data = maskedMatrix(x), margin = 2L))
+
+    values <- as.array(asDense(x))
+    dim(values) <- c(nLocations, elements)
+    list(data = values[index, , drop = FALSE], margin = 1L)
+}
+
+## Put the answers back where they came from, leaving fill everywhere else
+scatterMasked <- function (result, index, spatialDims, nSelected, fill, x, nSpatial)
+{
+    if (!is.atomic(result) || length(result) %% nSelected != 0L)
+        return(result)
+
+    perLocation <- length(result) %/% nSelected
+    full <- array(as.vector(fill, mode = typeof(result)), c(perLocation, prod(spatialDims)))
+    full[, index] <- result
+
+    if (perLocation == 1L)
+    {
+        dim(full) <- spatialDims
+        if (isImage(x) && typeof(full) %in% c("logical", "integer", "double", "complex"))
+            return(denseImage(full, template = x, spatial = nSpatial))
+        return(full)
+    }
+
+    dim(full) <- c(perLocation, spatialDims)
+    full
 }

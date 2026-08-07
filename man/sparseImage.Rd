@@ -5,6 +5,7 @@
 \alias{isSparseImage}
 \alias{asSparse}
 \alias{asDense}
+\alias{maskedMatrix}
 \alias{sparseness}
 \alias{mask}
 \title{Sparse images}
@@ -26,6 +27,8 @@ isSparseImage(x)
 asSparse(x, ...)
 
 asDense(x, ...)
+
+maskedMatrix(x)
 
 sparseness(x)
 

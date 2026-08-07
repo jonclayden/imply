@@ -82,6 +82,14 @@ sparseImage <- S7::new_class("sparseImage",
         storage.mode(xform) <- "double"
         dimnames(xform) <- NULL
 
+        ## Values are stored already shaped, one column per stored location,
+        ## so that maskedMatrix() can hand them back without copying. R would
+        ## otherwise duplicate them on the way out, since they are shared with
+        ## this object
+        elements <- if (spatial < nDims) prod(dim[-seq_len(spatial)]) else 1L
+        if (length(values) > 0L || elements > 0L)
+            dim(values) <- c(elements, length(values) %/% max(elements, 1L))
+
         S7::new_object(S7::S7_object(),
             mask = mask,
             values = values,
@@ -130,6 +138,32 @@ asDense <- function (x, ...)
     denseImage(sparseToDense(x@mask, x@values, x@dims, x@spatial),
                spatial = x@spatial, pixdim = x@pixdim, xform = x@xform,
                spaceUnit = x@spaceUnit, timeUnit = x@timeUnit)
+}
+
+#' `maskedMatrix()` returns the stored values with one column per stored
+#' location, which is the data matrix most voxelwise analysis wants: nothing
+#' outside the mask is present at all, and the values at one location are
+#' contiguous. Packing is voxel-major, so this is the shape the values are
+#' already held in and returning them costs nothing.
+#'
+#' @rdname sparseImage
+#' @export
+maskedMatrix <- function (x)
+{
+    if (!isSparseImage(x))
+        stop("Only a sparse image has packed values")
+
+    values <- x@values
+    elements <- elementCount(x)
+    stored <- maskCount(x@mask, locationCount(x))
+
+    ## Already shaped by the constructor; reshaped only for an image built
+    ## some other way, which is the one case that has to copy
+    if (identical(dim(values), c(as.integer(elements), as.integer(stored))))
+        return(values)
+
+    dim(values) <- c(elements, stored)
+    values
 }
 
 #' @rdname sparseImage

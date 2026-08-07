@@ -9,7 +9,16 @@
 \usage{
 imapply(x, margin, fun, ..., simplify = TRUE, threads = NULL, progress = FALSE)
 
-voxelApply(x, fun, ..., simplify = TRUE, threads = NULL, progress = FALSE)
+voxelApply(
+  x,
+  fun,
+  ...,
+  mask = NULL,
+  fill = 0,
+  simplify = TRUE,
+  threads = NULL,
+  progress = FALSE
+)
 
 lineApply(
   x,
@@ -47,6 +56,12 @@ sliceApply(
 
 \item{progress}{\code{FALSE} for none, \code{TRUE} for a text progress bar, or a
 function of \verb{(done, total)}. See \link{progress}.}
+
+\item{mask}{For \code{voxelApply()}, a logical array over the spatial dimensions,
+a sparse image whose mask is to be used, or \code{NULL} for none. Locations
+outside it are not visited at all.}
+
+\item{fill}{The value given to locations outside \code{mask}.}
 
 \item{axis}{For \code{lineApply()}, the axis lines run along; for \code{sliceApply()},
 the axis slices are cut across.}
