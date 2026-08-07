@@ -7,6 +7,15 @@
 
 #if defined(HAVE_LIBDISPATCH)
 #include <dispatch/dispatch.h>
+
+// The system headers libdispatch pulls in define FALSE and TRUE as macros,
+// which shadow the enumerators of R's Rboolean and make calls such as
+// R_useDynamicSymbols(dll, FALSE) fail to resolve. R's own Boolean.h undefines
+// them for the same reason, but only when it happens to be included later --
+// and Rcpp::compileAttributes() puts a package's own header first
+#undef FALSE
+#undef TRUE
+
 #elif defined(_OPENMP)
 #include <omp.h>
 #endif
