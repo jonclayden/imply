@@ -13,6 +13,18 @@ applyOverMarginSparse <- function(mask, values, dim, spatial, margin, fun, callN
     .Call(`_imply_applyOverMarginSparse`, mask, values, dim, spatial, margin, fun, callNames, simplify, from, to)
 }
 
+reduceOverMargin <- function(x, margin, what, naRm = FALSE, threads = 0L) {
+    .Call(`_imply_reduceOverMargin`, x, margin, what, naRm, threads)
+}
+
+reduceOverMarginPacked <- function(values, type, dim, margin, what, slope = 1, intercept = 0, naRm = FALSE, threads = 0L) {
+    .Call(`_imply_reduceOverMarginPacked`, values, type, dim, margin, what, slope, intercept, naRm, threads)
+}
+
+reduceOverMarginSparse <- function(mask, values, dim, spatial, margin, what, naRm = FALSE, threads = 0L) {
+    .Call(`_imply_reduceOverMarginSparse`, mask, values, dim, spatial, margin, what, naRm, threads)
+}
+
 orientationFromXform <- function(xform) {
     .Call(`_imply_orientationFromXform`, xform)
 }

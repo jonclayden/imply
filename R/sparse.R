@@ -118,6 +118,12 @@ asSparse <- function (x, ...)
 #' @export
 asDense <- function (x, ...)
 {
+    ## Unpacks whichever of the compact representations it is given, so a
+    ## caller that just wants ordinary values need not ask which one it has
+    if (isPackedImage(x))
+        return(denseImage(as.array(x), spatial = x@spatial, pixdim = x@pixdim, xform = x@xform,
+                          spaceUnit = x@spaceUnit, timeUnit = x@timeUnit))
+
     if (!isSparseImage(x))
         return(asDenseImage(x, ...))
 

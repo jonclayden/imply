@@ -3,6 +3,7 @@
 #' @useDynLib imply, .registration = TRUE
 #' @importFrom Rcpp sourceCpp
 #' @importFrom methods setMethod
+#' @importFrom stats sd var
 "_PACKAGE"
 
 ## S7 methods defined at the top level of a package are recorded but not
@@ -13,4 +14,5 @@
     S7::methods_register()
     registerSparseMethods()
     registerPackedMethods()
+    registerReductions()
 }

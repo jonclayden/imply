@@ -79,8 +79,19 @@ imapply <- function (x, margin, fun, ..., simplify = TRUE, threads = NULL)
     if (isAllNull(callNames))
         callNames <- NULL
 
+    ## Tested before routing, because base::apply() calls the function once on
+    ## a dummy sub-array to establish the type of an empty result, and the
+    ## compiled kernels have nothing to say about that
     if (nCalls == 0L)
         return(applyToEmpty(x, wrapped, callDims, callNames, marginDims, marginNames))
+
+    ## A recognised reduction is answered by the compiled kernel instead, which
+    ## avoids an interpreter call per sub-array and can use worker threads. The
+    ## check is conservative, so this never changes the answer
+    extras <- list(...)
+    routed <- routableReduction(fun, x, extras, simplify)
+    if (!is.null(routed))
+        return(imreduce(x, margin, routed, na.rm = isTRUE(extras$na.rm), threads = threads))
 
     out <- runOverMargin(unclassArray(x), margin, wrapped, callNames, simplify,
                          nCalls, resolveThreads(threads))
