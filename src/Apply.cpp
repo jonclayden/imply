@@ -21,6 +21,7 @@ namespace {
 // microseconds over a run of any length
 const R_xlen_t interruptInterval = 100;
 
+
 // Apply an R function over the margins of an array.
 //
 // Unlike base::apply(), which permutes the whole array into a fresh copy
@@ -124,7 +125,15 @@ Rcpp::List applyImpl (const Accessor &source,
             sub.attr("names") = subNames;
 
         SETCADR(call, sub);
-        Rcpp::RObject value = Rf_eval(call, R_GlobalEnv);
+
+        // Rcpp_fast_eval, not Rf_eval, because R may jump out of the applied
+        // function: an error, an interrupt, a return() from an enclosing
+        // frame, or a restart being invoked. A bare Rf_eval() would longjmp
+        // straight past every C++ frame below, leaking the sinks, walkers and
+        // buffers. R_UnwindProtect catches the jump and turns it into a C++
+        // exception so the stack unwinds properly; END_RCPP then resumes the
+        // original jump, so the condition still reaches R as whatever it was
+        Rcpp::RObject value = Rcpp::Rcpp_fast_eval(call, R_GlobalEnv);
 
         if (general == nullptr && fast == nullptr)
         {
@@ -160,7 +169,7 @@ Rcpp::List applyImpl (const Accessor &source,
         if (reporting && ((k + 1) % reportEvery == 0))
         {
             SETCADR(progressCall, Rf_ScalarReal(static_cast<double>(begin + k + 1)));
-            Rf_eval(progressCall, R_GlobalEnv);
+            Rcpp::Rcpp_fast_eval(progressCall, R_GlobalEnv);
         }
 
         // Rcpp runs R_CheckUserInterrupt() inside R_ToplevelExec, so R's
@@ -174,7 +183,7 @@ Rcpp::List applyImpl (const Accessor &source,
     if (reporting)
     {
         SETCADR(progressCall, Rf_ScalarReal(static_cast<double>(begin + nCalls)));
-        Rf_eval(progressCall, R_GlobalEnv);
+        Rcpp::Rcpp_fast_eval(progressCall, R_GlobalEnv);
     }
 
     if (fast != nullptr)

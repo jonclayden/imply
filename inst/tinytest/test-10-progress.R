@@ -178,3 +178,58 @@ expect_equal(imreduce(large, 3, "which.max"), apply(large, 3, which.max))
 small <- array(rnorm(20L * 20L * 50L), c(20L, 20L, 50L))
 expect_true(length(small) < 1e7)
 expect_equal(as.vector(imreduce(small, 3, "sum")), as.vector(apply(small, 3, sum)))
+
+## --- Jumping out of the applied function ------------------------------------
+
+## R may leave the applied function without returning: an error, an interrupt,
+## a return() from an enclosing frame, or a restart being invoked. A bare
+## Rf_eval() would longjmp straight past the compiled frames, leaking the
+## sinks and walkers, so the call goes through R_UnwindProtect instead. The
+## jump becomes a C++ exception, the stack unwinds, and the original jump is
+## then resumed so the condition still arrives as whatever it was.
+
+jumpy <- array(rnorm(5L * 5L * 200L), c(5L, 5L, 200L))
+
+## An error keeps its message and class, and stops where it was raised
+calls <- 0L
+outcome <- tryCatch(imapply(jumpy, 3, function (v) {
+                        calls <<- calls + 1L
+                        if (calls == 40L) stop("deliberate")
+                        sum(v)
+                    }), error = function (e) conditionMessage(e))
+expect_identical(outcome, "deliberate")
+expect_equal(calls, 40L)
+
+## A condition class survives too, rather than being flattened to a plain error
+outcome <- tryCatch(imapply(jumpy, 3, function (v) stop(structure(
+                        class = c("myError", "error", "condition"),
+                        list(message = "tagged", call = NULL)))),
+                    myError = function (e) "caught as myError")
+expect_identical(outcome, "caught as myError")
+
+## A restart invoked from inside the loop unwinds and runs its handler. This
+## is the case a plain error test would not cover, since it is not an error
+outcome <- withRestarts(
+    { imapply(jumpy, 3, function (v) invokeRestart("bail", "restarted")); "no restart" },
+    bail = function (msg) msg)
+expect_identical(outcome, "restarted")
+
+## A warning is not a jump, so the loop carries on and still returns
+expect_equal(suppressWarnings(imapply(jumpy, 3, function (v) { warning("noted"); sum(v) })),
+             apply(jumpy, 3, sum))
+
+## The session is unharmed by any of that, and results are unchanged
+expect_identical(imapply(jumpy, 3, function (v) sum(v)), apply(jumpy, 3, sum))
+
+## The same holds when a progress reporter is in play, since it is evaluated
+## through the same guard
+outcome <- tryCatch(imapply(jumpy, 3, function (v) stop("during progress"),
+                            progress = function (done, total) NULL),
+                    error = function (e) conditionMessage(e))
+expect_identical(outcome, "during progress")
+
+## ...and when the reporter itself is what fails
+outcome <- tryCatch(imapply(jumpy, 3, function (v) sum(v),
+                            progress = function (done, total) stop("reporter failed")),
+                    error = function (e) conditionMessage(e))
+expect_identical(outcome, "reporter failed")
