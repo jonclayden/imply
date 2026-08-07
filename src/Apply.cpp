@@ -15,6 +15,12 @@ using namespace imply;
 
 namespace {
 
+// How often to look for a pending interrupt. Frequent enough that a slow run
+// stops promptly, rare enough that the check itself never shows up in a
+// profile: each one is a setjmp and a call, so a hundred calls apart costs
+// microseconds over a run of any length
+const R_xlen_t interruptInterval = 100;
+
 // Apply an R function over the margins of an array.
 //
 // Unlike base::apply(), which permutes the whole array into a fresh copy
@@ -156,6 +162,13 @@ Rcpp::List applyImpl (const Accessor &source,
             SETCADR(progressCall, Rf_ScalarReal(static_cast<double>(begin + k + 1)));
             Rf_eval(progressCall, R_GlobalEnv);
         }
+
+        // Rcpp runs R_CheckUserInterrupt() inside R_ToplevelExec, so R's
+        // longjmp is contained there and an ordinary C++ exception is thrown
+        // instead. The stack unwinds properly and the sinks, walkers and
+        // buffers below are all destroyed
+        if ((k + 1) % interruptInterval == 0)
+            Rcpp::checkUserInterrupt();
     }
 
     if (reporting)

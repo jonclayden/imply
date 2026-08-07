@@ -163,7 +163,8 @@ void writeResult (const Accumulator &a, const Reduction what, const bool naRm,
 template <typename Accessor>
 void reduceImpl (const Accessor &source, const std::vector<Extent> &dims,
                  const std::vector<int> &margin, const Reduction what, const bool naRm,
-                 const int threads, double * const out)
+                 const int threads, double * const out,
+                 const Extent from, const Extent to)
 {
     const int nDims = static_cast<int>(dims.size());
 
@@ -196,17 +197,21 @@ void reduceImpl (const Accessor &source, const std::vector<Extent> &dims,
 
     const OffsetWalker marginTemplate(marginDims, marginStrides);
     const OffsetWalker callTemplate(callDims, callStrides);
-    const Extent nCalls = marginTemplate.size();
+    const Extent first = from;
+    const Extent last = std::min(to, marginTemplate.size());
     const int width = reductionWidth(what);
+
+    if (last <= first)
+        return;
 
     // Each chunk owns a disjoint run of calls and writes only its own slice of
     // the output, so there is nothing to synchronise
-    parallelFor(nCalls, threads, [&](const Extent begin, const Extent end) {
+    parallelFor(last - first, threads, [&](const Extent begin, const Extent end) {
         OffsetWalker margins = marginTemplate;
         OffsetWalker values = callTemplate;
-        margins.seek(begin);
+        margins.seek(first + begin);
 
-        for (Extent k=begin; k<end; k++)
+        for (Extent k=first+begin; k<first+end; k++)
         {
             const Offset base = margins.offset();
             const Extent n = values.size();
@@ -257,6 +262,36 @@ Extent callCount (const std::vector<Extent> &dims, const std::vector<int> &margi
     return n;
 }
 
+// Nothing inside the kernel may touch the R API, since it runs on worker
+// threads, so the interrupt is looked for between slabs of calls instead.
+// Slabbing costs one parallel launch per slab, which is only worth paying when
+// there is enough work for it to disappear into the noise
+template <typename Accessor>
+void runReduction (const Accessor &source, const std::vector<Extent> &dims,
+                   const std::vector<int> &margin, const Reduction what, const bool naRm,
+                   const int threads, double * const out)
+{
+    const Extent nCalls = callCount(dims, margin);
+    Extent total = 1;
+    for (std::size_t i=0; i<dims.size(); i++)
+        total *= dims[i];
+
+    const Extent slabs = (total > 10000000u ? std::min<Extent>(nCalls, 32) : 1);
+
+    if (slabs <= 1)
+    {
+        reduceImpl(source, dims, margin, what, naRm, threads, out, 0, nCalls);
+        return;
+    }
+
+    const Extent size = (nCalls + slabs - 1) / slabs;
+    for (Extent from=0; from<nCalls; from+=size)
+    {
+        reduceImpl(source, dims, margin, what, naRm, threads, out, from, std::min(from + size, nCalls));
+        Rcpp::checkUserInterrupt();
+    }
+}
+
 } // anonymous namespace
 
 // [[Rcpp::export]]
@@ -275,8 +310,8 @@ Rcpp::NumericVector reduceOverMargin (Rcpp::RObject x, Rcpp::IntegerVector margi
         if constexpr (Tag::kind == StorageType::complex)
             Rcpp::stop("Complex data are not supported by imreduce()");
         else
-            reduceImpl(DenseAccessor<typename Tag::Type>(data), dims, margin0, kind, naRm,
-                       threads, result.begin());
+            runReduction(DenseAccessor<typename Tag::Type>(data), dims, margin0, kind, naRm,
+                         threads, result.begin());
         return R_NilValue;
     });
 
@@ -297,8 +332,8 @@ Rcpp::NumericVector reduceOverMarginPacked (Rcpp::RawVector values, std::string 
 
     dispatchNarrowType(narrowTypeFromName(type), [&](auto stored) -> SEXP {
         typedef decltype(stored) Stored;
-        reduceImpl(NarrowAccessor<Stored>(values.begin(), slope, intercept), dims, margin0, kind,
-                   naRm, threads, result.begin());
+        runReduction(NarrowAccessor<Stored>(values.begin(), slope, intercept), dims, margin0, kind,
+                     naRm, threads, result.begin());
         return R_NilValue;
     });
 
@@ -329,8 +364,8 @@ Rcpp::NumericVector reduceOverMarginSparse (Rcpp::RawVector mask, Rcpp::RObject 
         if constexpr (Tag::kind == StorageType::complex)
             Rcpp::stop("Complex data are not supported by imreduce()");
         else
-            reduceImpl(SparseAccessor<typename Tag::Type>(bits, packed, elements), dims, margin0,
-                       kind, naRm, threads, result.begin());
+            runReduction(SparseAccessor<typename Tag::Type>(bits, packed, elements), dims, margin0,
+                         kind, naRm, threads, result.begin());
         return R_NilValue;
     });
 

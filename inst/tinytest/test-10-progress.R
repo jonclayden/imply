@@ -144,3 +144,37 @@ for (n in c(1L, 7L, 100L))
 pieces <- imply:::rangeChunks(10, 25, 4)
 expect_equal(vapply(pieces, `[`, numeric(1), 1L)[1L], 10)
 expect_equal(tail(vapply(pieces, `[`, numeric(1), 2L), 1L), 25)
+
+## --- Interruption ----------------------------------------------------------
+
+## Rcpp::checkUserInterrupt() runs R_CheckUserInterrupt() inside
+## R_ToplevelExec, so R's longjmp is contained and an ordinary C++ exception
+## is thrown instead, letting the sinks and walkers be destroyed on the way
+## out. Raising a real SIGINT would kill the test process, so what is checked
+## here is that adding the checks changed no answer, and that the slabbed
+## reduction path agrees with the unslabbed one.
+
+## The apply loop looks for an interrupt every hundred calls, which has to
+## divide the work without disturbing it
+manyCalls <- array(rnorm(4L * 4L * 250L), c(4L, 4L, 250L))
+expect_identical(imapply(manyCalls, 3, function (v) sum(v)), apply(manyCalls, 3, sum))
+expect_identical(imapply(manyCalls, c(1, 2), function (v) mean(v)), apply(manyCalls, c(1, 2), mean))
+
+## A reduction large enough to be split into slabs, so that it can be
+## interrupted between them, must give the same answer as a small one that is
+## not split. The threshold is on total elements, so this crosses it
+large <- array(rnorm(120L * 120L * 800L), c(120L, 120L, 800L))
+expect_true(length(large) > 1e7)
+expect_equal(as.vector(imreduce(large, 3, "sum")), as.vector(apply(large, 3, sum)))
+expect_equal(as.vector(imreduce(large, 3, "max")), as.vector(apply(large, 3, max)))
+expect_identical(imreduce(large, 3, "sum", threads = 2L), imreduce(large, 3, "sum", threads = 1L))
+
+## ...and slabbing must not disturb a reduction whose result is wider than one
+## value per call, where the output positions matter
+expect_equal(imreduce(large, 3, "range"), apply(large, 3, range))
+expect_equal(imreduce(large, 3, "which.max"), apply(large, 3, which.max))
+
+## Below the threshold the work is done in one go, and still agrees
+small <- array(rnorm(20L * 20L * 50L), c(20L, 20L, 50L))
+expect_true(length(small) < 1e7)
+expect_equal(as.vector(imreduce(small, 3, "sum")), as.vector(apply(small, 3, sum)))
