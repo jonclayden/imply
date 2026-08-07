@@ -2,14 +2,14 @@
 
 #include <memory>
 
-#include "Raster.h"
-#include "Storage.h"
-#include "Dispatch.h"
-#include "RImage.h"
-#include "Blocks.h"
-#include "Sink.h"
-#include "Sparse.h"
-#include "Narrow.h"
+#include "imply/Raster.h"
+#include "imply/Storage.h"
+#include "imply/Dispatch.h"
+#include "imply/RImage.h"
+#include "imply/Blocks.h"
+#include "imply/Sink.h"
+#include "imply/Sparse.h"
+#include "imply/Narrow.h"
 
 using namespace imply;
 

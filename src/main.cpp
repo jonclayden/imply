@@ -4,11 +4,11 @@
 // extents convert to R exactly as a dynamic one's std::vector does
 #include "RcppArray.h"
 
-#include "Raster.h"
-#include "Storage.h"
-#include "Dispatch.h"
-#include "RImage.h"
-#include "Parallel.h"
+#include "imply/Raster.h"
+#include "imply/Storage.h"
+#include "imply/Dispatch.h"
+#include "imply/RImage.h"
+#include "imply/Parallel.h"
 
 using namespace imply;
 

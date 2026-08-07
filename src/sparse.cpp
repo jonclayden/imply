@@ -1,10 +1,10 @@
 #include <Rcpp.h>
 
-#include "Raster.h"
-#include "Storage.h"
-#include "Dispatch.h"
-#include "RImage.h"
-#include "Sparse.h"
+#include "imply/Raster.h"
+#include "imply/Storage.h"
+#include "imply/Dispatch.h"
+#include "imply/RImage.h"
+#include "imply/Sparse.h"
 
 using namespace imply;
 

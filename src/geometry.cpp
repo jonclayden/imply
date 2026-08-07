@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "Space.h"
+#include "imply/Space.h"
 
 using namespace imply;
 
