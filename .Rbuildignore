@@ -8,3 +8,5 @@
 ^src/Makevars$
 ^autom4te\.cache$
 ^\.cache$
+^AGENTS\.md$
+^CLAUDE\.md$
