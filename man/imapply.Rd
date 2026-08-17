@@ -54,8 +54,9 @@ sliceApply(
 \item{threads}{Number of threads to use, or \code{NULL} to consult
 \code{getOption("imply.threads")}. See \link{parallelism}.}
 
-\item{progress}{\code{FALSE} for none, \code{TRUE} for a text progress bar, or a
-function of \verb{(done, total)}. See \link{progress}.}
+\item{progress}{\code{FALSE} for none, \code{TRUE} for a text progress bar showing
+the percentage complete and the rate in voxels per second, or a function
+of \verb{(done, total)}. See \link{progress}.}
 
 \item{mask}{For \code{voxelApply()}, a logical array over the spatial dimensions,
 a sparse image whose mask is to be used, or \code{NULL} for none. Locations

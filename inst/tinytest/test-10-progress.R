@@ -56,6 +56,56 @@ expect_true(any(grepl("100%", output, fixed = TRUE)))
 expect_error(imapply(x, 3, sum, progress = "yes"), "TRUE, FALSE, or a function")
 expect_error(imapply(x, 3, sum, progress = 1:3), "TRUE, FALSE, or a function")
 
+## --- The rate --------------------------------------------------------------
+
+## The bar reports throughput as well as position
+expect_true(any(grepl("voxels/s", output, fixed = TRUE)))
+
+## Every frame is the same width whatever the rate happens to be, since a
+## carriage return is all that overwrites the last one
+frames <- Filter(nzchar, unlist(strsplit(output, "\r", fixed = TRUE)))
+expect_true(length(frames) > 1L)
+expect_equal(length(unique(nchar(frames))), 1L)
+
+## A rate is shown to three significant figures at most, in a fixed width
+formatted <- vapply(c(0, 0.5, 99.9, 999, 1000, 12345, 1.5e6, 2.5e9, 7e12, NA, Inf),
+                    imply:::formatRate, character(1))
+expect_equal(unique(nchar(formatted)), 6L)
+expect_identical(formatted[6:9], c(" 12.3k", "  1.5M", "  2.5G", "  7.0T"))
+
+## What one call covers, which is what makes the rate comparable between the
+## verbs: each of them sweeps every voxel exactly once, however many calls that
+## takes. Margins here are voxelApply(), lineApply(axis = 1), sliceApply(axis = 3)
+volume <- denseImage(array(0, c(6L, 6L, 6L, 10L)))
+volumeDims <- c(6L, 6L, 6L, 10L)
+expect_equal(imply:::progressUnit(volume, volumeDims, 1:3)$perCall, 1)
+expect_equal(imply:::progressUnit(volume, volumeDims, 2:3)$perCall, 6)
+expect_equal(imply:::progressUnit(volume, volumeDims, 3L)$perCall, 36)
+for (margin in list(1:3, 2:3, 3L))
+    expect_equal(prod(volumeDims[margin]) * imply:::progressUnit(volume, volumeDims, margin)$perCall,
+                 prod(volumeDims[1:3]), info = paste(margin, collapse = ","))
+
+## The values held at each location are not voxels, so iterating over them
+## reports the whole image per call rather than a fraction of it
+expect_equal(imply:::progressUnit(volume, volumeDims, 4L)$perCall, 216)
+
+## An image with no spatial dimensions has no voxels to count
+flat <- denseImage(matrix(0, 4L, 6L), spatial = 0L)
+expect_identical(imply:::progressUnit(flat, c(4L, 6L), 1L)$name, "calls")
+expect_identical(imply:::progressUnit(volume, volumeDims, 1:3)$name, "voxels")
+
+## Under a mask the loop runs in the packed space, where the bar is made by
+## the masked path itself: one call is one selected location there, whatever
+## shape the image behind it had
+region <- array(FALSE, c(6L, 6L, 6L))
+region[1:10] <- TRUE
+masked <- capture.output(inMask <- voxelApply(volume, function (v) mean(v),
+                                              mask = region, progress = TRUE),
+                         type = "output")
+expect_identical(inMask, voxelApply(volume, function (v) mean(v), mask = region))
+expect_true(any(grepl("100%", masked, fixed = TRUE)))
+expect_true(any(grepl("voxels/s", masked, fixed = TRUE)))
+
 ## --- Under forked parallelism ----------------------------------------------
 
 ## A worker cannot report on its own behalf, so the work is batched and the

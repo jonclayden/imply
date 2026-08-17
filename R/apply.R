@@ -38,8 +38,9 @@
 #' @param simplify Whether to simplify the result to an array where possible.
 #' @param threads Number of threads to use, or `NULL` to consult
 #'   `getOption("imply.threads")`. See [parallelism].
-#' @param progress `FALSE` for none, `TRUE` for a text progress bar, or a
-#'   function of `(done, total)`. See [progress].
+#' @param progress `FALSE` for none, `TRUE` for a text progress bar showing
+#'   the percentage complete and the rate in voxels per second, or a function
+#'   of `(done, total)`. See [progress].
 #' @param axis For `lineApply()`, the axis lines run along; for `sliceApply()`,
 #'   the axis slices are cut across.
 #' @param mask For `voxelApply()`, a logical array over the spatial dimensions,
@@ -99,7 +100,7 @@ imapply <- function (x, margin, fun, ..., simplify = TRUE, threads = NULL, progr
     if (!is.null(routed))
         return(imreduce(x, margin, routed, na.rm = isTRUE(extras$na.rm), threads = threads))
 
-    reporter <- newProgress(progress, nCalls)
+    reporter <- newProgress(progress, nCalls, progressUnit(x, dims, margin))
     if (!is.null(reporter))
         on.exit(reporter$close(), add = TRUE)
 
@@ -301,6 +302,16 @@ maskedVoxelApply <- function (x, fun, ..., mask, fill, simplify, threads, progre
 
     if (length(index) == 0L)
         stop("Mask selects no locations")
+
+    ## The packed matrix is not an image, so the unit imapply() would infer for
+    ## the rate is not the right one. Here one call is exactly one location,
+    ## whatever shape the image behind it had, so the bar is made here instead
+    if (isTRUE(progress))
+    {
+        reporter <- newProgress(TRUE, length(index), list(perCall = 1, name = "voxels"))
+        on.exit(reporter$close(), add = TRUE)
+        progress <- function (done, total) reporter$report(done)
+    }
 
     input <- maskedInput(x, selected, index, nLocations, dims, nSpatial)
     result <- imapply(input$data, input$margin, fun, ..., simplify = simplify,

@@ -16,6 +16,15 @@ through the operation is. Passing \code{progress = TRUE} draws a text bar;
 passing a function of \verb{(done, total)} reports however you like.
 }
 \details{
+Besides the percentage complete, the bar shows throughput in voxels per
+second. Voxels are used rather than calls because they are comparable
+across the verbs: a call is one location for \code{\link[=voxelApply]{voxelApply()}} but a whole
+plane for \code{\link[=sliceApply]{sliceApply()}}, whereas both sweep the same number of voxels. The
+figure is a running average over the operation so far, rather than an
+instantaneous rate that would flicker from one update to the next. A
+function reporter is still given calls, since that is the unit its total is
+in, and is free to convert.
+
 Under forked parallelism the work is divided into batches, and the bar
 advances as each batch completes rather than as each call does. A worker
 cannot report on its own behalf: it is a separate process, and several of
