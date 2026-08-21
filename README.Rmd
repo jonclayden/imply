@@ -15,9 +15,8 @@ assumes it.
 
 The package deliberately sits *below* the existing R imaging stack: it has no
 dependency on any file format, and an image's geometry is a plain 4x4 affine.
-[`RNifti`](https://github.com/jonclayden/RNifti) and
-[`tractor.base`](https://github.com/jonclayden/tractor.base) interoperate
-through optional bridges rather than being depended upon.
+Reading, writing and interoperating with other image classes is out of scope,
+and left to packages that sit above this one.
 
 `imply` is distinguished by
 
@@ -59,7 +58,7 @@ library(imply)
 
 set.seed(1)
 data <- array(rnorm(4 * 5 * 6 * 10), dim = c(4, 5, 6, 10))
-image <- denseImage(data, pixdim = c(2, 2, 2.5), spatial = 3)
+image <- denseImage(data, voxelSize = c(2, 2, 2.5), spatial = 3)
 image
 ```
 
@@ -71,21 +70,19 @@ however many there are, whichever is fewer.
 ```{r}
 dim(image)
 spatial(image)
-pixdim(image)
-xform(image)
-orientation(image)
+voxelSize(image)
+worldTransform(image)
 ```
 
-`orientation()` reads off the sign and order of the affine's columns and
-reports it compactly: `"RAS"` here means the positive x-axis points right, y
-anterior, z superior — see `?geometry` for the convention. `voxelToWorld()`
-and `worldToVoxel()` convert points between voxel and world space using the
-same affine, in the zero-based voxel coordinates the transform itself uses
-(as opposed to R's one-based array indexing):
+Voxel size and world placement are stored, and can be set, independently of
+one another, so replacing one never has to touch the other — see `?geometry`.
+`fromVoxel()` and `toVoxel()` convert points between voxel and world space
+using the composed transform, in the zero-based voxel coordinates it uses (as
+opposed to R's one-based array indexing):
 
 ```{r}
-worldToVoxel(c(0, 0, 0), image)
-voxelToWorld(c(1, 1, 1), image)
+toVoxel(c(0, 0, 0), image)
+fromVoxel(c(1, 1, 1), image)
 ```
 
 Because a `denseImage` is a plain array underneath, ordinary R operations —
@@ -151,7 +148,7 @@ image when only the data is changing.
 
 ```{r}
 doubled <- denseImage(as.array(image) * 2, template = image)
-pixdim(doubled)
+voxelSize(doubled)
 ```
 
 ## Applying and reducing functions
@@ -233,31 +230,6 @@ same answer either way — the arithmetic reductions can differ from
 identical(imapply(image, 4, max), imreduce(image, 4, "max"))
 ```
 
-## Interoperability
-
-`imply` knows nothing about file formats, so reading and writing goes
-through packages that do. Bridges to and from
-[`RNifti`](https://github.com/jonclayden/RNifti) and
-[`tractor.base`](https://github.com/jonclayden/tractor.base) are available
-whenever those packages are installed, and are simple by construction: a
-NIfTI image's `xform` is exactly what `xform()` holds.
-
-```{r}
-nim <- toNifti(image)
-class(nim)
-
-back <- fromNifti(nim)
-identical(as.array(back), as.array(image))
-```
-
-```{r}
-mri <- toMriImage(image)
-class(mri)
-
-back <- fromMriImage(mri)
-dim(back)
-```
-
 ## Parallelism
 
 Work is parallelised in one of two ways, according to what is being run.
@@ -285,10 +257,10 @@ resolveThreads(2)
 ## API
 
 The apply/reduce engine, the accessors that let one kernel body read dense,
-sparse and narrowly-stored images alike, and the geometry machinery behind
-`orientation()` and friends, are all available to other packages' compiled
-code — not just to `imply` itself. Everything under `inst/include/` is
-header-only, so using it costs nothing to link against.
+sparse and narrowly-stored images alike, and the voxel-to-world geometry
+machinery behind `worldTransform()` and friends, are all available to other
+packages' compiled code — not just to `imply` itself. Everything under
+`inst/include/` is header-only, so using it costs nothing to link against.
 
 ```
 LinkingTo: imply

@@ -9,7 +9,7 @@ Description: Infrastructure for manipulating image data in a broad sense,
 	image objects, image space embedded time series, vector fields and so on.
 Imports: Rcpp, S7, methods, parallel, stats, utils
 LinkingTo: Rcpp, RcppArray
-Suggests: tinytest, RNifti, tractor.base
+Suggests: tinytest
 Encoding: UTF-8
 License: BSD_3_clause + file LICENCE
 URL: https://github.com/jonclayden/imply

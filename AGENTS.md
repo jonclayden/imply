@@ -4,11 +4,11 @@ This file provides guidance for AI agents when working with code in this reposit
 
 `imply` (a portmanteau of "image" and "apply") provides data structures for *generalised images* — two- or three-dimensional rasters that may hold a vector or time series at each location rather than a single intensity — together with infrastructure for memory-efficiently applying functions to them. The primary use case is medical imaging.
 
-The package deliberately sits **below** the existing R imaging stack: it has no dependency on any file format, and its geometry is a plain 4x4 affine. RNifti and tractor.base interoperate through optional bridges rather than being depended upon.
+The package deliberately sits **below** the existing R imaging stack: it has no dependency on any file format, and its geometry is a plain 4x4 affine. Reading, writing and interoperating with other image classes (RNifti, tractor.base, and so on) is out of scope and left to packages that sit above this one.
 
 **Repository:** `jonclayden/imply` (BSD-3-Clause)
 
-Dependencies are kept tight: `Rcpp`, `S7`, `methods`, `parallel`, `stats`, `utils` in Imports; `RcppArray` additionally in LinkingTo; `tinytest`, `RNifti` and `tractor.base` in Suggests.
+Dependencies are kept tight: `Rcpp`, `S7`, `methods`, `parallel`, `stats`, `utils` in Imports; `RcppArray` additionally in LinkingTo; `tinytest` in Suggests.
 
 ## Building and testing
 
