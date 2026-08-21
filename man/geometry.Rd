@@ -4,35 +4,32 @@
 \alias{geometry}
 \alias{isImage}
 \alias{spatial}
-\alias{pixdim}
-\alias{pixdim<-}
-\alias{xform}
-\alias{xform<-}
-\alias{orientation}
-\alias{worldToVoxel}
-\alias{voxelToWorld}
+\alias{voxelSize}
+\alias{voxelSize<-}
+\alias{worldTransform}
+\alias{worldTransform<-}
+\alias{toVoxel}
+\alias{fromVoxel}
 \title{Image geometry}
 \usage{
 isImage(x)
 
 spatial(x)
 
-pixdim(x)
+voxelSize(x)
 
-pixdim(x) <- value
+voxelSize(x) <- value
 
-xform(x)
+worldTransform(x)
 
-xform(x) <- value
+worldTransform(x) <- value
 
-orientation(x)
+toVoxel(points, x, type = "world", round = "none", bounds = NULL)
 
-worldToVoxel(points, x, type = "world", round = "none", bounds = NULL)
-
-voxelToWorld(points, x, type = "world")
+fromVoxel(points, x, type = "world")
 }
 \arguments{
-\item{x}{An image, or for \code{orientation} either an image or a 4x4 matrix.}
+\item{x}{An image, or for \code{worldTransform} either an image or a 4x4 matrix.}
 
 \item{value}{A replacement value.}
 
@@ -50,10 +47,30 @@ avoid selecting a location beyond the end of the image.}
 }
 \description{
 Accessors for the geometry of an image: the number of spatial dimensions,
-the voxel dimensions, the voxel-to-world transform and the anatomical
-orientation it implies.
+the voxel size and the placement of the image in world space.
 }
 \details{
-These are deliberately free of any dependency on a file format. A NIfTI
-image's transform is simply a 4x4 affine like any other.
+These are deliberately free of any dependency on a file format, and of any
+assumption that geometry is anatomical: an image with no meaningful spatial
+interpretation is free to leave it at the identity default and never think
+about it again.
+
+Voxel size and world placement are stored, and can be set, independently of
+one another, unlike a NIfTI xform, which bakes voxel size into the same
+matrix that carries rotation and translation and so has to be kept in sync
+by hand. Here, \verb{voxelSize<-} never touches rotation or translation, and
+the stored placement is always a rigid transform (rotation or reflection
+plus translation, no scale and no shear) so that the two cannot drift out
+of agreement. This follows the convention used by MRtrix's \code{.mif} format,
+whose image axes "are always normalised to unit amplitude", voxel size
+being applied separately.
+
+\code{worldTransform()} composes the two into the single 4x4 affine that other
+packages expect. Setting it back decomposes the matrix into rotation and
+scale; a matrix that doesn't decompose that way (i.e. one with genuine
+shear) is rejected rather than silently mangled. In practice a sheared
+\code{sform} usually means the field is being used to carry an affine
+registration or normalisation result (to Talairach or MNI space, say)
+rather than to describe voxel storage geometry, which is a different kind
+of information than this package models.
 }

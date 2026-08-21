@@ -14,8 +14,8 @@ packedImage(
   slope = 1,
   intercept = 0,
   spatial = NULL,
-  pixdim = NULL,
-  xform = NULL,
+  voxelSize = NULL,
+  worldTransform = NULL,
   spaceUnit = NULL,
   timeUnit = NULL,
   template = NULL
@@ -30,8 +30,8 @@ storageType(x)
 \arguments{
 \item{values}{A raw vector holding the packed values.}
 
-\item{dims, spatial, pixdim, xform, spaceUnit, timeUnit}{Image geometry, as for
-\code{\link[=denseImage]{denseImage()}}.}
+\item{dims, spatial, voxelSize, worldTransform, spaceUnit, timeUnit}{Image
+geometry, as for \code{\link[=denseImage]{denseImage()}}.}
 
 \item{slope, intercept}{Scaling applied to stored values. Chosen
 automatically when not given.}

@@ -77,14 +77,6 @@ Rcpp::NumericMatrix convertPoints (const Rcpp::NumericMatrix &locs, const ImageS
 } // anonymous namespace
 
 // [[Rcpp::export]]
-std::string orientationFromXform (Rcpp::NumericMatrix xform)
-{
-    ImageSpace space;
-    space.xform = affineFrom(xform);
-    return space.orientation();
-}
-
-// [[Rcpp::export]]
 Rcpp::NumericMatrix invertXform (Rcpp::NumericMatrix xform)
 {
     return affineTo(affineFrom(xform).inverse());

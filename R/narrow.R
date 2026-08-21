@@ -26,8 +26,8 @@
 #' @param slope,intercept Scaling applied to stored values. Chosen
 #'   automatically when not given.
 #' @param values A raw vector holding the packed values.
-#' @param dims,spatial,pixdim,xform,spaceUnit,timeUnit Image geometry, as for
-#'   [denseImage()].
+#' @param dims,spatial,voxelSize,worldTransform,spaceUnit,timeUnit Image
+#'   geometry, as for [denseImage()].
 #' @param template An image to take unspecified geometry from.
 #' @param ... Further arguments to `denseImage()`.
 #' @name packedImage
@@ -47,8 +47,8 @@ packedImage <- S7::new_class("packedImage",
         intercept = S7::class_double,
         dims = S7::class_integer,
         spatial = S7::class_integer,
-        pixdim = S7::class_double,
-        xform = S7::class_double,
+        voxelSize = S7::class_double,
+        orientation = S7::class_double,
         spaceUnit = S7::class_character,
         timeUnit = S7::class_character
     ),
@@ -71,26 +71,38 @@ packedImage <- S7::new_class("packedImage",
         if (length(self@values) != expected)
             return("@values is not the right length for the stated dimensions and storage type")
 
-        if (length(self@pixdim) != self@spatial)
-            return(paste0("@pixdim must have one element per spatial dimension (", self@spatial, ")"))
-        if (!identical(dim(self@xform), c(4L, 4L)))
-            return("@xform must be a 4x4 matrix")
+        if (length(self@voxelSize) != self@spatial)
+            return(paste0("@voxelSize must have one element per spatial dimension (", self@spatial, ")"))
+        if (anyNA(self@voxelSize))
+            return("@voxelSize must not be missing")
+        if (any(self@voxelSize <= 0))
+            return("@voxelSize must be strictly positive")
+
+        if (!identical(dim(self@orientation), c(4L, 4L)))
+            return("@orientation must be a 4x4 matrix")
+        if (anyNA(self@orientation))
+            return("@orientation must not contain missing values")
+        if (!isTRUE(all.equal(self@orientation[4, ], c(0, 0, 0, 1))))
+            return("@orientation must be affine, with a final row of (0, 0, 0, 1)")
+        block <- self@orientation[1:3, 1:3, drop = FALSE]
+        if (max(abs(crossprod(block) - diag(3))) > orthogonalityTolerance)
+            return("@orientation must be rigid: a rotation or reflection, with no scale or shear")
 
         NULL
     },
     constructor = function (values, storageType, dims, slope = 1, intercept = 0, spatial = NULL,
-                            pixdim = NULL, xform = NULL, spaceUnit = NULL, timeUnit = NULL,
+                            voxelSize = NULL, worldTransform = NULL, spaceUnit = NULL, timeUnit = NULL,
                             template = NULL)
     {
         dims <- as.integer(dims)
         nDims <- length(dims)
         spatial <- as.integer(spatial %||% attr(template, "spatial") %||% min(3L, nDims))
 
-        pixdim <- as.double(pixdim %||% attr(template, "pixdim") %||% rep(1, max(spatial, 0L)))
-        xform <- xform %||% attr(template, "xform") %||% defaultXform(pixdim)
-        xform <- as.matrix(xform)
-        storage.mode(xform) <- "double"
-        dimnames(xform) <- NULL
+        decomposed <- if (is.null(worldTransform)) NULL
+                      else decomposeTransform(validateXform(worldTransform), spatial)
+        orientation <- decomposed$orientation %||% attr(template, "orientation") %||% diag(4)
+        voxelSize <- as.double(voxelSize %||% decomposed$voxelSize %||%
+                               attr(template, "voxelSize") %||% rep(1, max(spatial, 0L)))
 
         S7::new_object(S7::S7_object(),
             values = values,
@@ -99,8 +111,8 @@ packedImage <- S7::new_class("packedImage",
             intercept = as.double(intercept),
             dims = dims,
             spatial = spatial,
-            pixdim = pixdim,
-            xform = xform,
+            voxelSize = voxelSize,
+            orientation = orientation,
             spaceUnit = as.character(spaceUnit %||% attr(template, "spaceUnit") %||% "unknown"),
             timeUnit = as.character(timeUnit %||% attr(template, "timeUnit") %||% "unknown"))
     })
@@ -142,7 +154,7 @@ asPacked <- function (x, type = "float32", slope = NULL, intercept = NULL, ...)
 
     packedImage(values = packNarrow(values, type, slope, intercept),
                 storageType = type, dims = dim(image), slope = slope, intercept = intercept,
-                spatial = image@spatial, pixdim = image@pixdim, xform = image@xform,
+                spatial = image@spatial, voxelSize = image@voxelSize, worldTransform = worldTransform(image),
                 spaceUnit = image@spaceUnit, timeUnit = image@timeUnit)
 }
 
@@ -169,9 +181,8 @@ S7::method(print, packedImage) <- function (x, ...)
     if (x@spatial > 0L)
     {
         cat(sprintf("  Spatial dimensions : %s\n", paste(x@dims[seq_len(x@spatial)], collapse = " x ")))
-        cat(sprintf("  Voxel dimensions   : %s %s\n",
-                    paste(signif(x@pixdim, 4), collapse = " x "), x@spaceUnit))
-        cat(sprintf("  Orientation        : %s\n", orientation(x)))
+        cat(sprintf("  Voxel size         : %s %s\n",
+                    paste(signif(x@voxelSize, 4), collapse = " x "), x@spaceUnit))
     }
     if (x@spatial < length(x@dims))
         cat(sprintf("  Values per location: %d\n", prod(x@dims[-seq_len(x@spatial)])))
@@ -245,8 +256,8 @@ registerPackedMethods <- function ()
                 first <- if (isPackedImage(e1)) as.array(e1) else asComparable(e1)
                 second <- if (isPackedImage(e2)) as.array(e2) else asComparable(e2)
                 template <- if (isPackedImage(e1)) e1 else e2
-                denseImage(op(first, second), spatial = template@spatial, pixdim = template@pixdim,
-                           xform = template@xform, spaceUnit = template@spaceUnit,
+                denseImage(op(first, second), spatial = template@spatial, voxelSize = template@voxelSize,
+                           worldTransform = worldTransform(template), spaceUnit = template@spaceUnit,
                            timeUnit = template@timeUnit)
             }
         })

@@ -1,13 +1,33 @@
 #' Image geometry
 #'
 #' Accessors for the geometry of an image: the number of spatial dimensions,
-#' the voxel dimensions, the voxel-to-world transform and the anatomical
-#' orientation it implies.
+#' the voxel size and the placement of the image in world space.
 #'
-#' These are deliberately free of any dependency on a file format. A NIfTI
-#' image's transform is simply a 4x4 affine like any other.
+#' These are deliberately free of any dependency on a file format, and of any
+#' assumption that geometry is anatomical: an image with no meaningful spatial
+#' interpretation is free to leave it at the identity default and never think
+#' about it again.
 #'
-#' @param x An image, or for `orientation` either an image or a 4x4 matrix.
+#' Voxel size and world placement are stored, and can be set, independently of
+#' one another, unlike a NIfTI xform, which bakes voxel size into the same
+#' matrix that carries rotation and translation and so has to be kept in sync
+#' by hand. Here, `voxelSize<-` never touches rotation or translation, and
+#' the stored placement is always a rigid transform (rotation or reflection
+#' plus translation, no scale and no shear) so that the two cannot drift out
+#' of agreement. This follows the convention used by MRtrix's `.mif` format,
+#' whose image axes "are always normalised to unit amplitude", voxel size
+#' being applied separately.
+#'
+#' `worldTransform()` composes the two into the single 4x4 affine that other
+#' packages expect. Setting it back decomposes the matrix into rotation and
+#' scale; a matrix that doesn't decompose that way (i.e. one with genuine
+#' shear) is rejected rather than silently mangled. In practice a sheared
+#' `sform` usually means the field is being used to carry an affine
+#' registration or normalisation result (to Talairach or MNI space, say)
+#' rather than to describe voxel storage geometry, which is a different kind
+#' of information than this package models.
+#'
+#' @param x An image, or for `worldTransform` either an image or a 4x4 matrix.
 #' @param value A replacement value.
 #' @param points A matrix of points, one per row and three columns.
 #' @param type The coordinate convention of `points`: `"voxel"`, `"scaled"`
@@ -32,46 +52,53 @@ spatial <- function (x) attr(x, "spatial") %||% min(3L, length(dim(x)))
 
 #' @rdname geometry
 #' @export
-pixdim <- function (x) attr(x, "pixdim") %||% rep(1, spatial(x))
+voxelSize <- function (x) attr(x, "voxelSize") %||% rep(1, spatial(x))
 
 #' @rdname geometry
 #' @export
-`pixdim<-` <- function (x, value)
+`voxelSize<-` <- function (x, value)
 {
     value <- as.double(value)
     x <- asDenseImage(x)
-    ## The transform encodes the voxel dimensions too, so it has to follow.
-    ## Both assignments run the class validator
-    x@pixdim <- value
-    x@xform <- defaultXform(value)
+    ## Orientation is untouched: this is the whole point of storing the two
+    ## independently rather than folding voxel size into the transform
+    x@voxelSize <- value
     x
 }
 
 #' @rdname geometry
 #' @export
-xform <- function (x)
+worldTransform <- function (x)
 {
-    if (is.matrix(x))
+    ## isImage() is checked first, and matrix-ness second, because a
+    ## two-dimensional image is itself a matrix: without this order such an
+    ## image would be misread as a raw transform to validate rather than an
+    ## image whose transform is wanted
+    if (isImage(x))
+        composeTransform(attr(x, "orientation") %||% diag(4), voxelSize(x))
+    else if (is.matrix(x))
         validateXform(x)
     else
-        attr(x, "xform") %||% defaultXform(pixdim(x))
+        composeTransform(diag(4), voxelSize(x))
 }
 
 #' @rdname geometry
 #' @export
-`xform<-` <- function (x, value)
+`worldTransform<-` <- function (x, value)
 {
     x <- asDenseImage(x)
-    x@xform <- validateXform(value)
+    decomposed <- decomposeTransform(validateXform(value), x@spatial)
+    x@orientation <- decomposed$orientation
+    x@voxelSize <- decomposed$voxelSize
     x
 }
 
-defaultXform <- function (pixdim)
+defaultXform <- function (voxelSize)
 {
     result <- diag(4)
-    n <- min(3L, length(pixdim))
+    n <- min(3L, length(voxelSize))
     if (n > 0L)
-        diag(result)[seq_len(n)] <- pixdim[seq_len(n)]
+        diag(result)[seq_len(n)] <- voxelSize[seq_len(n)]
     result
 }
 
@@ -89,16 +116,69 @@ validateXform <- function (value)
     value
 }
 
-#' @rdname geometry
-#' @export
-orientation <- function (x) orientationFromXform(xform(x))
+## The tolerance below is deliberately loose relative to floating-point noise:
+## NIfTI sform/qform fields are stored as float32 in the header, which can
+## introduce relative error of order 1e-7 in each entry, and considerably more
+## after normalising a column by a voxel size of only a few millimetres. A
+## genuine shear, in contrast, comes from something like a 12-parameter affine
+## registration and is essentially never this close to orthogonal
+orthogonalityTolerance <- 1e-4
+
+## Splits a full affine into a rigid placement (unit-length, mutually
+## orthogonal columns, i.e. a rotation or reflection, plus translation) and a
+## voxel size. Errors if the 3x3 block doesn't decompose that way, which in
+## practice usually means it encodes a general affine registration rather than
+## voxel storage geometry - a different kind of information than an
+## orientation matrix here is meant to hold
+decomposeTransform <- function (xform, spatial)
+{
+    block <- xform[1:3, 1:3, drop = FALSE]
+    norms <- sqrt(colSums(block^2))
+    if (any(norms[seq_len(spatial)] < .Machine$double.eps^0.5))
+        stop("Transform has a zero-length axis and cannot be decomposed")
+
+    unit <- block
+    for (i in 1:3)
+        unit[, i] <- if (norms[i] > 0) block[, i] / norms[i] else block[, i]
+
+    crossTerms <- crossprod(unit) - diag(3)
+    if (max(abs(crossTerms[upper.tri(crossTerms)])) > orthogonalityTolerance)
+        stop("Transform cannot be decomposed into rotation and voxel size ",
+             "(it contains shear); resample the image, or supply a rigid ",
+             "transform with voxelSize<-/worldTransform<- set separately")
+
+    ## Axes beyond `spatial` have nowhere to store a non-unit scale
+    if (spatial < 3L && any(abs(norms[(spatial + 1L):3] - 1) > orthogonalityTolerance))
+        stop("Transform implies a non-unit scale on an axis beyond the ",
+             "image's spatial dimensions, which cannot be represented")
+
+    orientation <- diag(4)
+    orientation[1:3, 1:3] <- unit
+    orientation[1:3, 4] <- xform[1:3, 4]
+
+    list(orientation = orientation, voxelSize = norms[seq_len(spatial)])
+}
+
+## The inverse of decomposeTransform(): recombines a rigid placement and a
+## voxel size into the single affine other packages expect
+composeTransform <- function (orientation, voxelSize)
+{
+    result <- orientation
+    n <- min(3L, length(voxelSize))
+    if (n > 0L)
+    {
+        for (i in seq_len(n))
+            result[1:3, i] <- result[1:3, i] * voxelSize[i]
+    }
+    result
+}
 
 #' @rdname geometry
 #' @export
-worldToVoxel <- function (points, x, type = "world", round = "none", bounds = NULL)
+toVoxel <- function (points, x, type = "world", round = "none", bounds = NULL)
 {
     points <- asPointMatrix(points)
-    result <- pointsToVoxel(points, xform(x), pixdim(x), type)
+    result <- pointsToVoxel(points, worldTransform(x), voxelSize(x), type)
     if (!identical(round, "none"))
     {
         if (is.null(bounds) && !is.matrix(x))
@@ -110,8 +190,8 @@ worldToVoxel <- function (points, x, type = "world", round = "none", bounds = NU
 
 #' @rdname geometry
 #' @export
-voxelToWorld <- function (points, x, type = "world")
-    pointsFromVoxel(asPointMatrix(points), xform(x), pixdim(x), type)
+fromVoxel <- function (points, x, type = "world")
+    pointsFromVoxel(asPointMatrix(points), worldTransform(x), voxelSize(x), type)
 
 asPointMatrix <- function (points)
 {

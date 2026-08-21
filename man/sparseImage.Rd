@@ -15,8 +15,8 @@ sparseImage(
   values,
   dim,
   spatial = NULL,
-  pixdim = NULL,
-  xform = NULL,
+  voxelSize = NULL,
+  worldTransform = NULL,
   spaceUnit = NULL,
   timeUnit = NULL,
   template = NULL
@@ -39,8 +39,8 @@ mask(x)
 
 \item{values}{Packed values, in location order.}
 
-\item{dim, spatial, pixdim, xform, spaceUnit, timeUnit}{Image geometry, as for
-\code{\link[=denseImage]{denseImage()}}.}
+\item{dim, spatial, voxelSize, worldTransform, spaceUnit, timeUnit}{Image
+geometry, as for \code{\link[=denseImage]{denseImage()}}.}
 
 \item{template}{An image to take unspecified geometry from.}
 

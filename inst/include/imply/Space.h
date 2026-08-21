@@ -126,11 +126,6 @@ public:
         : spatial(spatial), pixdim(pixdim), xform(xform),
           spaceUnit("unknown"), timeUnit("unknown") {}
 
-    // Three-letter code naming, for each voxel axis, the anatomical direction
-    // in which its index increases. Derived from the transform matrix directly,
-    // so no quaternion representation is needed
-    std::string orientation () const;
-
     // Convert a point of the given type to voxel coordinates
     Point toVoxel (const Point &p, const PointType type) const;
 
@@ -187,60 +182,6 @@ inline Affine Affine::inverse () const
         result(i,3) = -(result(i,0)*m(0,3) + result(i,1)*m(1,3) + result(i,2)*m(2,3));
 
     result(3,3) = 1.0;
-    return result;
-}
-
-inline std::string ImageSpace::orientation () const
-{
-    // Column j of the 3x3 block is the world-space direction along which voxel
-    // axis j increases, so each voxel axis has to be matched to the anatomical
-    // axis it aligns with most strongly.
-    //
-    // Columns are first normalised to unit length, so that anisotropic voxel
-    // dimensions cannot outweigh direction, and the assignment is then chosen
-    // by exhaustive search over all six permutations. A greedy nearest-axis
-    // assignment is not equivalent: it disagrees with the NIfTI reference
-    // implementation on roughly one oblique transform in fifteen
-    static const char codes[3][2] = { {'L','R'}, {'P','A'}, {'I','S'} };
-    static const int permutations[6][3] = { {0,1,2}, {0,2,1}, {1,0,2}, {1,2,0}, {2,0,1}, {2,1,0} };
-
-    double q[3][3];
-    for (int j=0; j<3; j++)
-    {
-        double norm = 0.0;
-        for (int i=0; i<3; i++)
-            norm += xform(i,j) * xform(i,j);
-        norm = std::sqrt(norm);
-
-        for (int i=0; i<3; i++)
-            q[i][j] = (norm > 0.0 ? xform(i,j) / norm : xform(i,j));
-    }
-
-    int best = -1;
-    double bestScore = -1.0;
-    for (int p=0; p<6; p++)
-    {
-        double score = 0.0;
-        for (int j=0; j<3; j++)
-            score += std::fabs(q[permutations[p][j]][j]);
-
-        if (score > bestScore)
-        {
-            bestScore = score;
-            best = p;
-        }
-    }
-
-    std::string result(3, '?');
-    if (best < 0)
-        return result;
-
-    for (int j=0; j<3; j++)
-    {
-        const int i = permutations[best][j];
-        result[j] = codes[i][q[i][j] > 0.0 ? 1 : 0];
-    }
-
     return result;
 }
 

@@ -12,7 +12,7 @@ dense[3, 3, 1] <- NA                      # NA is not zero, so it must survive
 other <- array(0, c(8L, 8L, 4L))
 other[sample(256L, 40L)] <- rnorm(40L)
 
-image <- denseImage(dense, pixdim = c(2, 2, 2))
+image <- denseImage(dense, voxelSize = c(2, 2, 2))
 s <- asSparse(image)
 t <- asSparse(denseImage(other))
 
@@ -30,10 +30,9 @@ expect_identical(as.array(asDense(s)), dense)
 expect_true(is.na(as.array(s)[3, 3, 1]))
 
 ## Geometry travels with the image
-expect_equal(pixdim(s), c(2, 2, 2))
-expect_equal(xform(s), xform(image))
-expect_equal(orientation(s), "RAS")
-expect_equal(pixdim(asDense(s)), c(2, 2, 2))
+expect_equal(voxelSize(s), c(2, 2, 2))
+expect_equal(worldTransform(s), worldTransform(image))
+expect_equal(voxelSize(asDense(s)), c(2, 2, 2))
 
 ## A location holding NA is stored, not folded away
 expect_equal(sum(mask(s)), 61L)
@@ -132,9 +131,9 @@ for (case in cases)
 }
 
 ## Geometry survives arithmetic
-expect_equal(pixdim(s * 2), c(2, 2, 2))
-expect_equal(xform(s * 2), xform(image))
-expect_equal(pixdim(s + 1), c(2, 2, 2))
+expect_equal(voxelSize(s * 2), c(2, 2, 2))
+expect_equal(worldTransform(s * 2), worldTransform(image))
+expect_equal(voxelSize(s + 1), c(2, 2, 2))
 
 ## Mixing a sparse and a dense image works in both directions
 expect_identical(as.array(s * image), dense * dense)
@@ -225,7 +224,7 @@ expect_identical(sum(empty), 0)
 expect_true(isSparseImage(empty * 2))
 
 ## A two-dimensional image
-flat <- asSparse(denseImage(array(c(1, 0, 0, 2), c(2L, 2L)), spatial = 2L, pixdim = c(1, 1)))
+flat <- asSparse(denseImage(array(c(1, 0, 0, 2), c(2L, 2L)), spatial = 2L, voxelSize = c(1, 1)))
 expect_equal(sum(mask(flat)), 2L)
 expect_identical(as.array(flat), array(c(1, 0, 0, 2), c(2L, 2L)))
 

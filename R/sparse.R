@@ -19,8 +19,8 @@
 #' @param ... Further arguments to `denseImage()` or `sparseImage()`.
 #' @param mask A raw vector of one bit per location, or a logical vector.
 #' @param values Packed values, in location order.
-#' @param dim,spatial,pixdim,xform,spaceUnit,timeUnit Image geometry, as for
-#'   [denseImage()].
+#' @param dim,spatial,voxelSize,worldTransform,spaceUnit,timeUnit Image
+#'   geometry, as for [denseImage()].
 #' @param template An image to take unspecified geometry from.
 #' @name sparseImage
 NULL
@@ -33,8 +33,8 @@ sparseImage <- S7::new_class("sparseImage",
         values = S7::class_atomic,
         dims = S7::class_integer,
         spatial = S7::class_integer,
-        pixdim = S7::class_double,
-        xform = S7::class_double,
+        voxelSize = S7::class_double,
+        orientation = S7::class_double,
         spaceUnit = S7::class_character,
         timeUnit = S7::class_character
     ),
@@ -59,14 +59,26 @@ sparseImage <- S7::new_class("sparseImage",
         if (length(self@values) != maskCount(self@mask, locations) * elements)
             return("@values does not hold one entry per present location")
 
-        if (length(self@pixdim) != self@spatial)
-            return(paste0("@pixdim must have one element per spatial dimension (", self@spatial, ")"))
-        if (!identical(dim(self@xform), c(4L, 4L)))
-            return("@xform must be a 4x4 matrix")
+        if (length(self@voxelSize) != self@spatial)
+            return(paste0("@voxelSize must have one element per spatial dimension (", self@spatial, ")"))
+        if (anyNA(self@voxelSize))
+            return("@voxelSize must not be missing")
+        if (any(self@voxelSize <= 0))
+            return("@voxelSize must be strictly positive")
+
+        if (!identical(dim(self@orientation), c(4L, 4L)))
+            return("@orientation must be a 4x4 matrix")
+        if (anyNA(self@orientation))
+            return("@orientation must not contain missing values")
+        if (!isTRUE(all.equal(self@orientation[4, ], c(0, 0, 0, 1))))
+            return("@orientation must be affine, with a final row of (0, 0, 0, 1)")
+        block <- self@orientation[1:3, 1:3, drop = FALSE]
+        if (max(abs(crossprod(block) - diag(3))) > orthogonalityTolerance)
+            return("@orientation must be rigid: a rotation or reflection, with no scale or shear")
 
         NULL
     },
-    constructor = function (mask, values, dim, spatial = NULL, pixdim = NULL, xform = NULL,
+    constructor = function (mask, values, dim, spatial = NULL, voxelSize = NULL, worldTransform = NULL,
                             spaceUnit = NULL, timeUnit = NULL, template = NULL)
     {
         dim <- as.integer(dim)
@@ -76,11 +88,11 @@ sparseImage <- S7::new_class("sparseImage",
         if (is.logical(mask))
             mask <- maskFromLogical(mask)
 
-        pixdim <- as.double(pixdim %||% attr(template, "pixdim") %||% rep(1, max(spatial, 0L)))
-        xform <- xform %||% attr(template, "xform") %||% defaultXform(pixdim)
-        xform <- as.matrix(xform)
-        storage.mode(xform) <- "double"
-        dimnames(xform) <- NULL
+        decomposed <- if (is.null(worldTransform)) NULL
+                      else decomposeTransform(validateXform(worldTransform), spatial)
+        orientation <- decomposed$orientation %||% attr(template, "orientation") %||% diag(4)
+        voxelSize <- as.double(voxelSize %||% decomposed$voxelSize %||%
+                               attr(template, "voxelSize") %||% rep(1, max(spatial, 0L)))
 
         ## Values are stored already shaped, one column per stored location,
         ## so that maskedMatrix() can hand them back without copying. R would
@@ -95,8 +107,8 @@ sparseImage <- S7::new_class("sparseImage",
             values = values,
             dims = dim,
             spatial = spatial,
-            pixdim = pixdim,
-            xform = xform,
+            voxelSize = voxelSize,
+            orientation = orientation,
             spaceUnit = as.character(spaceUnit %||% attr(template, "spaceUnit") %||% "unknown"),
             timeUnit = as.character(timeUnit %||% attr(template, "timeUnit") %||% "unknown"))
     })
@@ -118,7 +130,7 @@ asSparse <- function (x, ...)
     packed <- denseToSparse(as.array(image), image@spatial)
 
     sparseImage(mask = packed$mask, values = packed$values, dim = dim(image),
-                spatial = image@spatial, pixdim = image@pixdim, xform = image@xform,
+                spatial = image@spatial, voxelSize = image@voxelSize, worldTransform = worldTransform(image),
                 spaceUnit = image@spaceUnit, timeUnit = image@timeUnit)
 }
 
@@ -129,14 +141,15 @@ asDense <- function (x, ...)
     ## Unpacks whichever of the compact representations it is given, so a
     ## caller that just wants ordinary values need not ask which one it has
     if (isPackedImage(x))
-        return(denseImage(as.array(x), spatial = x@spatial, pixdim = x@pixdim, xform = x@xform,
+        return(denseImage(as.array(x), spatial = x@spatial, voxelSize = x@voxelSize,
+                          worldTransform = worldTransform(x),
                           spaceUnit = x@spaceUnit, timeUnit = x@timeUnit))
 
     if (!isSparseImage(x))
         return(asDenseImage(x, ...))
 
     denseImage(sparseToDense(x@mask, x@values, x@dims, x@spatial),
-               spatial = x@spatial, pixdim = x@pixdim, xform = x@xform,
+               spatial = x@spatial, voxelSize = x@voxelSize, worldTransform = worldTransform(x),
                spaceUnit = x@spaceUnit, timeUnit = x@timeUnit)
 }
 
@@ -202,9 +215,8 @@ S7::method(print, sparseImage) <- function (x, ...)
     if (x@spatial > 0L)
     {
         cat(sprintf("  Spatial dimensions : %s\n", paste(x@dims[seq_len(x@spatial)], collapse = " x ")))
-        cat(sprintf("  Voxel dimensions   : %s %s\n",
-                    paste(signif(x@pixdim, 4), collapse = " x "), x@spaceUnit))
-        cat(sprintf("  Orientation        : %s\n", orientation(x)))
+        cat(sprintf("  Voxel size         : %s %s\n",
+                    paste(signif(x@voxelSize, 4), collapse = " x "), x@spaceUnit))
     }
     if (x@spatial < length(x@dims))
         cat(sprintf("  Values per location: %d\n", elementCount(x)))

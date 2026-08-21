@@ -34,20 +34,22 @@ isStillAbsent <- function (value)
 }
 
 geometryOf <- function (x)
-    list(spatial = x@spatial, pixdim = x@pixdim, xform = x@xform,
+    list(spatial = x@spatial, voxelSize = x@voxelSize, worldTransform = worldTransform(x),
          spaceUnit = x@spaceUnit, timeUnit = x@timeUnit)
 
 rebuild <- function (template, mask, values)
 {
     tight <- tightenMask(mask, values, locationCount(template), elementCount(template))
     sparseImage(mask = tight$mask, values = tight$values, dim = template@dims,
-                spatial = template@spatial, pixdim = template@pixdim, xform = template@xform,
+                spatial = template@spatial, voxelSize = template@voxelSize,
+                worldTransform = worldTransform(template),
                 spaceUnit = template@spaceUnit, timeUnit = template@timeUnit)
 }
 
 denseFrom <- function (template, values)
-    denseImage(array(values, template@dims), spatial = template@spatial, pixdim = template@pixdim,
-               xform = template@xform, spaceUnit = template@spaceUnit, timeUnit = template@timeUnit)
+    denseImage(array(values, template@dims), spatial = template@spatial, voxelSize = template@voxelSize,
+               worldTransform = worldTransform(template), spaceUnit = template@spaceUnit,
+               timeUnit = template@timeUnit)
 
 ## --- Binary operations -----------------------------------------------------
 

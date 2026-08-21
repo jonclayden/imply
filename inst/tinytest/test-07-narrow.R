@@ -6,7 +6,7 @@
 
 set.seed(1)
 values <- array(rnorm(8L * 8L * 4L), c(8L, 8L, 4L))
-image <- denseImage(values, pixdim = c(2, 2, 2))
+image <- denseImage(values, voxelSize = c(2, 2, 2))
 
 ## --- float32 ---------------------------------------------------------------
 
@@ -29,9 +29,8 @@ expect_true(max(abs(as.array(f) - values)) < 1e-6)
 expect_equal(as.array(f), values, tolerance = 1e-6)
 
 ## Geometry travels with the image
-expect_equal(pixdim(f), c(2, 2, 2))
-expect_equal(xform(f), xform(image))
-expect_equal(orientation(f), "RAS")
+expect_equal(voxelSize(f), c(2, 2, 2))
+expect_equal(worldTransform(f), worldTransform(image))
 expect_equal(spatial(f), 3L)
 
 ## --- Integer types and calibration -----------------------------------------
@@ -172,7 +171,7 @@ expect_identical(imapply(sparseSeries, 4, range), apply(thresholded, 4, range))
 sum2 <- f + 1
 expect_true(isDenseImage(sum2))
 expect_equal(as.array(sum2), unpacked + 1)
-expect_equal(pixdim(sum2), c(2, 2, 2))
+expect_equal(voxelSize(sum2), c(2, 2, 2))
 
 expect_true(isDenseImage(f * 2))
 expect_equal(as.array(f * 2), unpacked * 2)

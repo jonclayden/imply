@@ -13,22 +13,6 @@ applyOverMarginSparse <- function(mask, values, dim, spatial, margin, fun, callN
     .Call(`_imply_applyOverMarginSparse`, mask, values, dim, spatial, margin, fun, callNames, simplify, from, to, progress, reportEvery)
 }
 
-reduceOverMargin <- function(x, margin, what, naRm = FALSE, threads = 0L) {
-    .Call(`_imply_reduceOverMargin`, x, margin, what, naRm, threads)
-}
-
-reduceOverMarginPacked <- function(values, type, dim, margin, what, slope = 1, intercept = 0, naRm = FALSE, threads = 0L) {
-    .Call(`_imply_reduceOverMarginPacked`, values, type, dim, margin, what, slope, intercept, naRm, threads)
-}
-
-reduceOverMarginSparse <- function(mask, values, dim, spatial, margin, what, naRm = FALSE, threads = 0L) {
-    .Call(`_imply_reduceOverMarginSparse`, mask, values, dim, spatial, margin, what, naRm, threads)
-}
-
-orientationFromXform <- function(xform) {
-    .Call(`_imply_orientationFromXform`, xform)
-}
-
 invertXform <- function(xform) {
     .Call(`_imply_invertXform`, xform)
 }
@@ -43,6 +27,30 @@ pointsFromVoxel <- function(locs, xform, pixdim, type = "world") {
 
 roundPoints <- function(locs, round = "conventional", bounds = NULL) {
     .Call(`_imply_roundPoints`, locs, round, bounds)
+}
+
+valueRange <- function(x) {
+    .Call(`_imply_valueRange`, x)
+}
+
+calibrateStorage <- function(type, low, high, integral) {
+    .Call(`_imply_calibrateStorage`, type, low, high, integral)
+}
+
+packNarrow <- function(x, type, slope = 1, intercept = 0) {
+    .Call(`_imply_packNarrow`, x, type, slope, intercept)
+}
+
+unpackNarrow <- function(packed, type, count, slope = 1, intercept = 0) {
+    .Call(`_imply_unpackNarrow`, packed, type, count, slope, intercept)
+}
+
+narrowElements <- function(packed, type, count, indices, slope = 1, intercept = 0) {
+    .Call(`_imply_narrowElements`, packed, type, count, indices, slope, intercept)
+}
+
+narrowSummary <- function(packed, type, count, slope = 1, intercept = 0, naRm = FALSE) {
+    .Call(`_imply_narrowSummary`, packed, type, count, slope, intercept, naRm)
 }
 
 rasterInfo <- function(x, spatial = NULL, forceDynamic = FALSE) {
@@ -81,28 +89,16 @@ dataAddress <- function(x) {
     .Call(`_imply_dataAddress`, x)
 }
 
-valueRange <- function(x) {
-    .Call(`_imply_valueRange`, x)
+reduceOverMargin <- function(x, margin, what, naRm = FALSE, threads = 0L) {
+    .Call(`_imply_reduceOverMargin`, x, margin, what, naRm, threads)
 }
 
-calibrateStorage <- function(type, low, high, integral) {
-    .Call(`_imply_calibrateStorage`, type, low, high, integral)
+reduceOverMarginPacked <- function(values, type, dim, margin, what, slope = 1, intercept = 0, naRm = FALSE, threads = 0L) {
+    .Call(`_imply_reduceOverMarginPacked`, values, type, dim, margin, what, slope, intercept, naRm, threads)
 }
 
-packNarrow <- function(x, type, slope = 1, intercept = 0) {
-    .Call(`_imply_packNarrow`, x, type, slope, intercept)
-}
-
-unpackNarrow <- function(packed, type, count, slope = 1, intercept = 0) {
-    .Call(`_imply_unpackNarrow`, packed, type, count, slope, intercept)
-}
-
-narrowElements <- function(packed, type, count, indices, slope = 1, intercept = 0) {
-    .Call(`_imply_narrowElements`, packed, type, count, indices, slope, intercept)
-}
-
-narrowSummary <- function(packed, type, count, slope = 1, intercept = 0, naRm = FALSE) {
-    .Call(`_imply_narrowSummary`, packed, type, count, slope, intercept, naRm)
+reduceOverMarginSparse <- function(mask, values, dim, spatial, margin, what, naRm = FALSE, threads = 0L) {
+    .Call(`_imply_reduceOverMarginSparse`, mask, values, dim, spatial, margin, what, naRm, threads)
 }
 
 denseToSparse <- function(x, spatial = NULL) {

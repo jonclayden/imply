@@ -100,7 +100,7 @@ All of these were found the hard way:
 
 ## Testing
 
-`tinytest`, one file per area under `inst/tinytest/`, currently ~2,950 assertions. The dominant pattern is **differential testing against a reference**: `base::apply` for `imapply`, RNifti for orientation codes, the dense image for every sparse or narrow operation. Prefer this to fixed expected values.
+`tinytest`, one file per area under `inst/tinytest/`, currently ~2,950 assertions. The dominant pattern is **differential testing against a reference**: `base::apply` for `imapply`, the dense image for every sparse or narrow operation. Prefer this to fixed expected values.
 
 Where a claim is about memory or speed, assert the *ratio* rather than an absolute figure, so the test is not brittle across machines.
 

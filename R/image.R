@@ -12,8 +12,10 @@
 #'
 #' @param .data An array, or any atomic vector, which is treated as
 #'   one-dimensional.
-#' @param pixdim Voxel dimensions, one per spatial dimension.
-#' @param xform A 4x4 affine transform mapping voxel to world coordinates.
+#' @param voxelSize Voxel size, one per spatial dimension.
+#' @param worldTransform A 4x4 affine transform mapping voxel to world
+#'   coordinates. Decomposed into rotation/translation and voxel size on
+#'   assignment; see [geometry].
 #' @param spatial The number of leading dimensions that index location rather
 #'   than the value held at each location. Defaults to three, or the
 #'   dimensionality if that is smaller.
@@ -38,8 +40,8 @@ denseImage <- S7::new_class("denseImage",
     parent = arrayClass,
     properties = list(
         spatial = S7::class_integer,
-        pixdim = S7::class_double,
-        xform = S7::class_double,
+        voxelSize = S7::class_double,
+        orientation = S7::class_double,
         spaceUnit = S7::class_character,
         timeUnit = S7::class_character
     ),
@@ -51,24 +53,29 @@ denseImage <- S7::new_class("denseImage",
         if (self@spatial < 0L || self@spatial > nDims)
             return(paste0("@spatial must be between 0 and ", nDims))
 
-        if (length(self@pixdim) != self@spatial)
-            return(paste0("@pixdim must have one element per spatial dimension (", self@spatial, ")"))
-        if (anyNA(self@pixdim))
-            return("@pixdim must not be missing")
+        if (length(self@voxelSize) != self@spatial)
+            return(paste0("@voxelSize must have one element per spatial dimension (", self@spatial, ")"))
+        if (anyNA(self@voxelSize))
+            return("@voxelSize must not be missing")
+        if (any(self@voxelSize <= 0))
+            return("@voxelSize must be strictly positive")
 
-        if (!identical(dim(self@xform), c(4L, 4L)))
-            return("@xform must be a 4x4 matrix")
-        if (anyNA(self@xform))
-            return("@xform must not contain missing values")
-        if (!isTRUE(all.equal(self@xform[4, ], c(0, 0, 0, 1))))
-            return("@xform must be affine, with a final row of (0, 0, 0, 1)")
+        if (!identical(dim(self@orientation), c(4L, 4L)))
+            return("@orientation must be a 4x4 matrix")
+        if (anyNA(self@orientation))
+            return("@orientation must not contain missing values")
+        if (!isTRUE(all.equal(self@orientation[4, ], c(0, 0, 0, 1))))
+            return("@orientation must be affine, with a final row of (0, 0, 0, 1)")
+        block <- self@orientation[1:3, 1:3, drop = FALSE]
+        if (max(abs(crossprod(block) - diag(3))) > orthogonalityTolerance)
+            return("@orientation must be rigid: a rotation or reflection, with no scale or shear")
 
         if (length(self@spaceUnit) != 1L || length(self@timeUnit) != 1L)
             return("@spaceUnit and @timeUnit must each be a single value")
 
         NULL
     },
-    constructor = function (.data, pixdim = NULL, xform = NULL, spatial = NULL,
+    constructor = function (.data, voxelSize = NULL, worldTransform = NULL, spatial = NULL,
                             spaceUnit = NULL, timeUnit = NULL, template = NULL)
     {
         if (!is.atomic(.data))
@@ -80,19 +87,21 @@ denseImage <- S7::new_class("denseImage",
 
         nDims <- length(dim(.data))
 
-        ## Explicit arguments win, then the template, then defaults
+        ## Explicit arguments win, then a value implied by another explicit
+        ## argument (a worldTransform implies both orientation and voxel
+        ## size), then the template, then defaults
         spatial <- as.integer(spatial %||% attr(template, "spatial") %||% min(3L, nDims))
-        pixdim <- as.double(pixdim %||% attr(template, "pixdim") %||% rep(1, max(spatial, 0L)))
-        xform <- xform %||% attr(template, "xform") %||% defaultXform(pixdim)
 
-        xform <- as.matrix(xform)
-        storage.mode(xform) <- "double"
-        dimnames(xform) <- NULL
+        decomposed <- if (is.null(worldTransform)) NULL
+                      else decomposeTransform(validateXform(worldTransform), spatial)
+        orientation <- decomposed$orientation %||% attr(template, "orientation") %||% diag(4)
+        voxelSize <- as.double(voxelSize %||% decomposed$voxelSize %||%
+                               attr(template, "voxelSize") %||% rep(1, max(spatial, 0L)))
 
         S7::new_object(.data,
             spatial = spatial,
-            pixdim = pixdim,
-            xform = xform,
+            voxelSize = voxelSize,
+            orientation = orientation,
             spaceUnit = as.character(spaceUnit %||% attr(template, "spaceUnit") %||% "unknown"),
             timeUnit = as.character(timeUnit %||% attr(template, "timeUnit") %||% "unknown"))
     })
@@ -153,9 +162,8 @@ S7::method(print, denseImage) <- function (x, ...)
     if (nSpatial > 0L)
     {
         cat(sprintf("  Spatial dimensions : %s\n", paste(dims[seq_len(nSpatial)], collapse = " x ")))
-        cat(sprintf("  Voxel dimensions   : %s %s\n",
-                    paste(signif(x@pixdim, 4), collapse = " x "), x@spaceUnit))
-        cat(sprintf("  Orientation        : %s\n", orientation(x)))
+        cat(sprintf("  Voxel size         : %s %s\n",
+                    paste(signif(x@voxelSize, 4), collapse = " x "), x@spaceUnit))
     }
     if (nSpatial < length(dims))
         cat(sprintf("  Values per location: %d\n", prod(dims[-seq_len(nSpatial)])))
@@ -165,7 +173,7 @@ S7::method(print, denseImage) <- function (x, ...)
 
 S7::method(as.array, denseImage) <- function (x, ...)
 {
-    for (name in c("spatial", "pixdim", "xform", "spaceUnit", "timeUnit", "S7_class"))
+    for (name in c("spatial", "voxelSize", "orientation", "spaceUnit", "timeUnit", "S7_class"))
         attr(x, name) <- NULL
     class(x) <- NULL
     x

@@ -1,4 +1,5 @@
-## Image geometry: affine inversion, orientation, and coordinate conversion.
+## Image geometry: affine inversion, voxel size/transform decomposition, and
+## coordinate conversion.
 
 ## A typical clinical transform: 2 mm isotropic, left-handed x axis
 las <- rbind(c(-2, 0, 0,   90),
@@ -23,66 +24,82 @@ expect_error(imply:::invertXform(diag(3)), "4x4")
 expect_error(imply:::invertXform(rbind(diag(4)[1:3, ], c(1, 1, 1, 1))), "affine")
 expect_error(imply:::invertXform(diag(c(1, 1, 0, 1))), "singular")
 
-## --- Orientation -----------------------------------------------------------
+## --- Decomposition into voxel size and world transform ----------------------
 
-expect_equal(orientation(diag(4)), "RAS")
-expect_equal(orientation(las), "LAS")
-expect_equal(orientation(diag(c(-1, -1, 1, 1))), "LPS")
-expect_equal(orientation(diag(c(1, -1, -1, 1))), "RPI")
+## las decomposes to voxel size (2, 2, 2) and a rigid, reflected frame
+decomposedLas <- imply:::decomposeTransform(las, 3L)
+expect_equal(decomposedLas$voxelSize, c(2, 2, 2))
+expect_equal(decomposedLas$orientation %*% diag(c(2, 2, 2, 1)), las)
 
-## Axis-swapping transforms, where the letters permute rather than flip
-expect_equal(orientation(rbind(c(0, 0, 1, 0), c(1, 0, 0, 0), c(0, 1, 0, 0), c(0, 0, 0, 1))), "ASR")
+## Recomposing gets back the original affine
+expect_equal(imply:::composeTransform(decomposedLas$orientation, decomposedLas$voxelSize), las)
 
-## Voxel dimensions must not influence the answer, only direction: columns are
-## normalised before the axes are matched
-expect_equal(orientation(las %*% diag(c(10, 1, 1, 1))), orientation(las))
-expect_equal(orientation(diag(c(5, 0.1, 2, 1))), "RAS")
+## Anisotropic, oblique voxel size and orientation round-trip too
+decomposedOblique <- imply:::decomposeTransform(oblique, 3L)
+expect_equal(decomposedOblique$voxelSize, c(1.2, 0.8, 3))
+expect_equal(imply:::composeTransform(decomposedOblique$orientation, decomposedOblique$voxelSize), oblique)
 
-## The assignment is chosen by exhaustive search rather than greedily, which
-## matters for oblique transforms. RNifti implements the NIfTI reference
-## algorithm, so it makes an independent check where it is available
-if (requireNamespace("RNifti", quietly = TRUE)) {
-    set.seed(42)
-    for (i in 1:200) {
-        m <- diag(4)
-        m[1:3, 1:3] <- qr.Q(qr(matrix(rnorm(9), 3))) %*% diag(sample(c(-1, 1), 3, TRUE) * runif(3, 0.2, 5))
-        expect_identical(orientation(m), RNifti::orientation(m),
-                         info = paste("oblique transform", i))
-    }
-}
+## A genuinely sheared affine -- as might arise from a 12-parameter affine
+## registration to a template space -- cannot be decomposed into rotation and
+## voxel size, and is rejected rather than silently mangled
+sheared <- diag(4)
+sheared[1:3, 1:3] <- matrix(c(1, 0, 0, 0.3, 1, 0, 0, 0, 1), 3)
+expect_error(imply:::decomposeTransform(sheared, 3L), "shear")
+
+## --- Voxel size and world transform never desync ----------------------------
+
+image <- denseImage(array(0, c(91L, 109L, 91L)), voxelSize = c(2, 2, 2), worldTransform = las)
+expect_equal(worldTransform(image), las)
+expect_equal(voxelSize(image), c(2, 2, 2))
+
+## Setting voxel size alone must leave rotation and translation untouched --
+## this is the regression case for the original bug, where pixdim<- discarded
+## both
+voxelSize(image) <- c(3, 3, 3)
+expect_equal(worldTransform(image)[1:3, 4], las[1:3, 4])
+expect_equal(worldTransform(image)[1:3, 1:3], las[1:3, 1:3] / 2 * 3)
+expect_equal(voxelSize(image), c(3, 3, 3))
+
+## worldTransform<- decomposes its argument the same way and, symmetrically,
+## must leave nothing of the previous voxel size behind
+worldTransform(image) <- oblique
+expect_equal(worldTransform(image), oblique)
+expect_equal(voxelSize(image), c(1.2, 0.8, 3))
+
+expect_error(worldTransform(image) <- sheared, "shear")
 
 ## --- Coordinate conversion -------------------------------------------------
 
-image <- denseImage(array(0, c(91L, 109L, 91L)), pixdim = c(2, 2, 2), xform = las)
+image <- denseImage(array(0, c(91L, 109L, 91L)), voxelSize = c(2, 2, 2), worldTransform = las)
 
 ## Converting a world point to voxel coordinates must invert the transform.
 ## The implementation this was ported from applied the forward transform here,
 ## so a round trip is the regression test for that bug
 voxel <- c(10, 20, 30)
-world <- voxelToWorld(voxel, image)
+world <- fromVoxel(voxel, image)
 expect_equal(as.vector(world), as.vector(las %*% c(voxel, 1))[1:3])
-expect_equal(as.vector(worldToVoxel(world, image)), voxel)
+expect_equal(as.vector(toVoxel(world, image)), voxel)
 
 ## Explicitly: the reverse conversion is not the forward transform
-expect_false(isTRUE(all.equal(as.vector(worldToVoxel(world, image)),
+expect_false(isTRUE(all.equal(as.vector(toVoxel(world, image)),
                               as.vector(las %*% c(world, 1))[1:3])))
 
 ## Round trip over many points, including the oblique case
 set.seed(7)
 points <- matrix(runif(300, 0, 80), ncol = 3)
-expect_equal(worldToVoxel(voxelToWorld(points, image), image), points)
+expect_equal(toVoxel(fromVoxel(points, image), image), points)
 
-obliqueImage <- denseImage(array(0, c(10L, 10L, 10L)), pixdim = c(1.2, 0.8, 3), xform = oblique)
-expect_equal(worldToVoxel(voxelToWorld(points, obliqueImage), obliqueImage), points)
+obliqueImage <- denseImage(array(0, c(10L, 10L, 10L)), voxelSize = c(1.2, 0.8, 3), worldTransform = oblique)
+expect_equal(toVoxel(fromVoxel(points, obliqueImage), obliqueImage), points)
 
 ## Scaled coordinates apply the voxel dimensions but ignore rotation
-expect_equal(as.vector(voxelToWorld(c(1, 1, 1), image, type = "scaled")), c(2, 2, 2))
-expect_equal(as.vector(worldToVoxel(c(2, 2, 2), image, type = "scaled")), c(1, 1, 1))
+expect_equal(as.vector(fromVoxel(c(1, 1, 1), image, type = "scaled")), c(2, 2, 2))
+expect_equal(as.vector(toVoxel(c(2, 2, 2), image, type = "scaled")), c(1, 1, 1))
 
 ## Voxel coordinates pass through untouched
-expect_equal(as.vector(voxelToWorld(c(3, 4, 5), image, type = "voxel")), c(3, 4, 5))
+expect_equal(as.vector(fromVoxel(c(3, 4, 5), image, type = "voxel")), c(3, 4, 5))
 
-expect_error(voxelToWorld(matrix(1:8, ncol = 4), image), "three columns")
+expect_error(fromVoxel(matrix(1:8, ncol = 4), image), "three columns")
 
 ## --- Rounding --------------------------------------------------------------
 

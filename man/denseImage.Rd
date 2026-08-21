@@ -8,8 +8,8 @@
 \usage{
 denseImage(
   .data,
-  pixdim = NULL,
-  xform = NULL,
+  voxelSize = NULL,
+  worldTransform = NULL,
   spatial = NULL,
   spaceUnit = NULL,
   timeUnit = NULL,
@@ -24,9 +24,11 @@ asDenseImage(x, ...)
 \item{.data}{An array, or any atomic vector, which is treated as
 one-dimensional.}
 
-\item{pixdim}{Voxel dimensions, one per spatial dimension.}
+\item{voxelSize}{Voxel size, one per spatial dimension.}
 
-\item{xform}{A 4x4 affine transform mapping voxel to world coordinates.}
+\item{worldTransform}{A 4x4 affine transform mapping voxel to world
+coordinates. Decomposed into rotation/translation and voxel size on
+assignment; see \link{geometry}.}
 
 \item{spatial}{The number of leading dimensions that index location rather
 than the value held at each location. Defaults to three, or the

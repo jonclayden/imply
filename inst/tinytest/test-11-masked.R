@@ -7,7 +7,7 @@ brain <- array(runif(prod(spatialDims)) < 0.4, spatialDims)
 values <- array(rnorm(prod(spatialDims) * nT), c(spatialDims, nT))
 values[!brain] <- 0
 
-image <- denseImage(values, pixdim = c(2, 2, 2))
+image <- denseImage(values, voxelSize = c(2, 2, 2))
 packed <- asSparse(image)
 selected <- sum(brain)
 
@@ -33,7 +33,7 @@ for (k in c(1L, 2L, length(stored)))
 expect_identical(imply:::dataAddress(m), imply:::dataAddress(packed@values))
 
 ## A scalar image gives one row
-scalar <- asSparse(denseImage(array(c(1, 0, 0, 2, 0, 3), c(3L, 2L)), spatial = 2L, pixdim = c(1, 1)))
+scalar <- asSparse(denseImage(array(c(1, 0, 0, 2, 0, 3), c(3L, 2L)), spatial = 2L, voxelSize = c(1, 1)))
 expect_equal(dim(maskedMatrix(scalar)), c(1L, 3L))
 expect_equal(as.vector(maskedMatrix(scalar)), c(1, 2, 3))
 
@@ -73,8 +73,8 @@ expect_equal(as.array(withNA)[brain], as.array(reference)[brain])
 expect_equal(as.array(voxelApply(image, function (v) mean(v), mask = brain, fill = -1))[!brain][1L], -1)
 
 ## Geometry is carried through
-expect_equal(pixdim(masked), c(2, 2, 2))
-expect_equal(xform(masked), xform(image))
+expect_equal(voxelSize(masked), c(2, 2, 2))
+expect_equal(worldTransform(masked), worldTransform(image))
 
 ## --- Results wider than one value per location -----------------------------
 

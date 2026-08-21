@@ -35,7 +35,9 @@ classes of packages that do handle formats, and are available whenever
 those packages are installed.
 }
 \details{
-A NIfTI image's \code{xform} maps voxel to world coordinates, which is exactly
-what \code{\link[=xform]{xform()}} holds, so the conversion is a copy of the data plus a
-transfer of geometry.
+A NIfTI image's resolved xform maps voxel to world coordinates and bakes in
+voxel size, which is exactly what \code{worldTransform()} returns for an imply
+image, so the conversion is a copy of the data plus a transfer of geometry
+(decomposed into \code{worldTransform()}'s rotation/translation and
+\code{voxelSize()}'s scale on the way in).
 }

@@ -96,15 +96,15 @@ expect_error(imapply(x, NA_integer_, sum), "out of range")
 
 ## --- voxelApply ------------------------------------------------------------
 
-image <- denseImage(array(rnorm(4 * 5 * 6 * 10), c(4L, 5L, 6L, 10L)), pixdim = c(2, 2, 3))
+image <- denseImage(array(rnorm(4 * 5 * 6 * 10), c(4L, 5L, 6L, 10L)), voxelSize = c(2, 2, 3))
 
 ## Applying over the values at each location is applying over the spatial
 ## margins, and a single value per location is itself an image
 means <- voxelApply(image, mean)
 expect_true(isDenseImage(means))
 expect_equal(dim(means), c(4L, 5L, 6L))
-expect_equal(pixdim(means), c(2, 2, 3))
-expect_equal(xform(means), xform(image))
+expect_equal(voxelSize(means), c(2, 2, 3))
+expect_equal(worldTransform(means), worldTransform(image))
 expect_equal(as.array(means), apply(as.array(image), 1:3, mean))
 
 ## More than one value per location is an array, not an image, because the
@@ -118,7 +118,7 @@ expect_equal(ranges, apply(as.array(image), 1:3, range))
 expect_equal(unique(as.vector(voxelApply(image, length))), 10L)
 
 ## A two-dimensional image with a series at each location
-slicesOverTime <- denseImage(array(rnorm(4 * 5 * 7), c(4L, 5L, 7L)), spatial = 2L, pixdim = c(1, 1))
+slicesOverTime <- denseImage(array(rnorm(4 * 5 * 7), c(4L, 5L, 7L)), spatial = 2L, voxelSize = c(1, 1))
 expect_equal(dim(voxelApply(slicesOverTime, mean)), c(4L, 5L))
 expect_equal(unique(as.vector(voxelApply(slicesOverTime, length))), 7L)
 
@@ -149,7 +149,7 @@ expect_equal(sliceApply(image, dim, axis = 3)[, 1], c(4L, 5L, 10L))
 
 ## The two-dimensional case, where a slice is degenerate but a line is exactly
 ## what is wanted. With no values per location, a line is a bare vector
-flat <- denseImage(array(rnorm(4 * 5), c(4L, 5L)), spatial = 2L, pixdim = c(1, 1))
+flat <- denseImage(array(rnorm(4 * 5), c(4L, 5L)), spatial = 2L, voxelSize = c(1, 1))
 expect_equal(length(lineApply(flat, sum, axis = 1)), 5L)
 expect_equal(length(lineApply(flat, sum, axis = 2)), 4L)
 expect_equal(unique(as.vector(lineApply(flat, length, axis = 1))), 4L)
@@ -159,7 +159,7 @@ expect_null(lineApply(flat, dim, axis = 1))
 
 ## A two-dimensional image with a series at each location: the line brings its
 ## series along
-flatSeries <- denseImage(array(rnorm(4 * 5 * 7), c(4L, 5L, 7L)), spatial = 2L, pixdim = c(1, 1))
+flatSeries <- denseImage(array(rnorm(4 * 5 * 7), c(4L, 5L, 7L)), spatial = 2L, voxelSize = c(1, 1))
 expect_equal(lineApply(flatSeries, dim, axis = 1)[, 1], c(4L, 7L))
 expect_identical(lineApply(flatSeries, sum, axis = 1), apply(as.array(flatSeries), 2, sum))
 

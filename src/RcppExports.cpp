@@ -75,69 +75,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// reduceOverMargin
-Rcpp::NumericVector reduceOverMargin(Rcpp::RObject x, Rcpp::IntegerVector margin, std::string what, bool naRm, int threads);
-RcppExport SEXP _imply_reduceOverMargin(SEXP xSEXP, SEXP marginSEXP, SEXP whatSEXP, SEXP naRmSEXP, SEXP threadsSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::RObject >::type x(xSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type margin(marginSEXP);
-    Rcpp::traits::input_parameter< std::string >::type what(whatSEXP);
-    Rcpp::traits::input_parameter< bool >::type naRm(naRmSEXP);
-    Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(reduceOverMargin(x, margin, what, naRm, threads));
-    return rcpp_result_gen;
-END_RCPP
-}
-// reduceOverMarginPacked
-Rcpp::NumericVector reduceOverMarginPacked(Rcpp::RawVector values, std::string type, Rcpp::IntegerVector dim, Rcpp::IntegerVector margin, std::string what, double slope, double intercept, bool naRm, int threads);
-RcppExport SEXP _imply_reduceOverMarginPacked(SEXP valuesSEXP, SEXP typeSEXP, SEXP dimSEXP, SEXP marginSEXP, SEXP whatSEXP, SEXP slopeSEXP, SEXP interceptSEXP, SEXP naRmSEXP, SEXP threadsSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::RawVector >::type values(valuesSEXP);
-    Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type dim(dimSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type margin(marginSEXP);
-    Rcpp::traits::input_parameter< std::string >::type what(whatSEXP);
-    Rcpp::traits::input_parameter< double >::type slope(slopeSEXP);
-    Rcpp::traits::input_parameter< double >::type intercept(interceptSEXP);
-    Rcpp::traits::input_parameter< bool >::type naRm(naRmSEXP);
-    Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(reduceOverMarginPacked(values, type, dim, margin, what, slope, intercept, naRm, threads));
-    return rcpp_result_gen;
-END_RCPP
-}
-// reduceOverMarginSparse
-Rcpp::NumericVector reduceOverMarginSparse(Rcpp::RawVector mask, Rcpp::RObject values, Rcpp::IntegerVector dim, int spatial, Rcpp::IntegerVector margin, std::string what, bool naRm, int threads);
-RcppExport SEXP _imply_reduceOverMarginSparse(SEXP maskSEXP, SEXP valuesSEXP, SEXP dimSEXP, SEXP spatialSEXP, SEXP marginSEXP, SEXP whatSEXP, SEXP naRmSEXP, SEXP threadsSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::RawVector >::type mask(maskSEXP);
-    Rcpp::traits::input_parameter< Rcpp::RObject >::type values(valuesSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type dim(dimSEXP);
-    Rcpp::traits::input_parameter< int >::type spatial(spatialSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type margin(marginSEXP);
-    Rcpp::traits::input_parameter< std::string >::type what(whatSEXP);
-    Rcpp::traits::input_parameter< bool >::type naRm(naRmSEXP);
-    Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(reduceOverMarginSparse(mask, values, dim, spatial, margin, what, naRm, threads));
-    return rcpp_result_gen;
-END_RCPP
-}
-// orientationFromXform
-std::string orientationFromXform(Rcpp::NumericMatrix xform);
-RcppExport SEXP _imply_orientationFromXform(SEXP xformSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type xform(xformSEXP);
-    rcpp_result_gen = Rcpp::wrap(orientationFromXform(xform));
-    return rcpp_result_gen;
-END_RCPP
-}
 // invertXform
 Rcpp::NumericMatrix invertXform(Rcpp::NumericMatrix xform);
 RcppExport SEXP _imply_invertXform(SEXP xformSEXP) {
@@ -187,6 +124,92 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< std::string >::type round(roundSEXP);
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type bounds(boundsSEXP);
     rcpp_result_gen = Rcpp::wrap(roundPoints(locs, round, bounds));
+    return rcpp_result_gen;
+END_RCPP
+}
+// valueRange
+Rcpp::List valueRange(Rcpp::RObject x);
+RcppExport SEXP _imply_valueRange(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::RObject >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(valueRange(x));
+    return rcpp_result_gen;
+END_RCPP
+}
+// calibrateStorage
+Rcpp::List calibrateStorage(std::string type, double low, double high, bool integral);
+RcppExport SEXP _imply_calibrateStorage(SEXP typeSEXP, SEXP lowSEXP, SEXP highSEXP, SEXP integralSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
+    Rcpp::traits::input_parameter< double >::type low(lowSEXP);
+    Rcpp::traits::input_parameter< double >::type high(highSEXP);
+    Rcpp::traits::input_parameter< bool >::type integral(integralSEXP);
+    rcpp_result_gen = Rcpp::wrap(calibrateStorage(type, low, high, integral));
+    return rcpp_result_gen;
+END_RCPP
+}
+// packNarrow
+Rcpp::RawVector packNarrow(Rcpp::RObject x, std::string type, double slope, double intercept);
+RcppExport SEXP _imply_packNarrow(SEXP xSEXP, SEXP typeSEXP, SEXP slopeSEXP, SEXP interceptSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::RObject >::type x(xSEXP);
+    Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
+    Rcpp::traits::input_parameter< double >::type slope(slopeSEXP);
+    Rcpp::traits::input_parameter< double >::type intercept(interceptSEXP);
+    rcpp_result_gen = Rcpp::wrap(packNarrow(x, type, slope, intercept));
+    return rcpp_result_gen;
+END_RCPP
+}
+// unpackNarrow
+Rcpp::NumericVector unpackNarrow(Rcpp::RawVector packed, std::string type, double count, double slope, double intercept);
+RcppExport SEXP _imply_unpackNarrow(SEXP packedSEXP, SEXP typeSEXP, SEXP countSEXP, SEXP slopeSEXP, SEXP interceptSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::RawVector >::type packed(packedSEXP);
+    Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
+    Rcpp::traits::input_parameter< double >::type count(countSEXP);
+    Rcpp::traits::input_parameter< double >::type slope(slopeSEXP);
+    Rcpp::traits::input_parameter< double >::type intercept(interceptSEXP);
+    rcpp_result_gen = Rcpp::wrap(unpackNarrow(packed, type, count, slope, intercept));
+    return rcpp_result_gen;
+END_RCPP
+}
+// narrowElements
+Rcpp::NumericVector narrowElements(Rcpp::RawVector packed, std::string type, double count, Rcpp::NumericVector indices, double slope, double intercept);
+RcppExport SEXP _imply_narrowElements(SEXP packedSEXP, SEXP typeSEXP, SEXP countSEXP, SEXP indicesSEXP, SEXP slopeSEXP, SEXP interceptSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::RawVector >::type packed(packedSEXP);
+    Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
+    Rcpp::traits::input_parameter< double >::type count(countSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type indices(indicesSEXP);
+    Rcpp::traits::input_parameter< double >::type slope(slopeSEXP);
+    Rcpp::traits::input_parameter< double >::type intercept(interceptSEXP);
+    rcpp_result_gen = Rcpp::wrap(narrowElements(packed, type, count, indices, slope, intercept));
+    return rcpp_result_gen;
+END_RCPP
+}
+// narrowSummary
+Rcpp::List narrowSummary(Rcpp::RawVector packed, std::string type, double count, double slope, double intercept, bool naRm);
+RcppExport SEXP _imply_narrowSummary(SEXP packedSEXP, SEXP typeSEXP, SEXP countSEXP, SEXP slopeSEXP, SEXP interceptSEXP, SEXP naRmSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::RawVector >::type packed(packedSEXP);
+    Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
+    Rcpp::traits::input_parameter< double >::type count(countSEXP);
+    Rcpp::traits::input_parameter< double >::type slope(slopeSEXP);
+    Rcpp::traits::input_parameter< double >::type intercept(interceptSEXP);
+    Rcpp::traits::input_parameter< bool >::type naRm(naRmSEXP);
+    rcpp_result_gen = Rcpp::wrap(narrowSummary(packed, type, count, slope, intercept, naRm));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -307,89 +330,55 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// valueRange
-Rcpp::List valueRange(Rcpp::RObject x);
-RcppExport SEXP _imply_valueRange(SEXP xSEXP) {
+// reduceOverMargin
+Rcpp::NumericVector reduceOverMargin(Rcpp::RObject x, Rcpp::IntegerVector margin, std::string what, bool naRm, int threads);
+RcppExport SEXP _imply_reduceOverMargin(SEXP xSEXP, SEXP marginSEXP, SEXP whatSEXP, SEXP naRmSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::RObject >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(valueRange(x));
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type margin(marginSEXP);
+    Rcpp::traits::input_parameter< std::string >::type what(whatSEXP);
+    Rcpp::traits::input_parameter< bool >::type naRm(naRmSEXP);
+    Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(reduceOverMargin(x, margin, what, naRm, threads));
     return rcpp_result_gen;
 END_RCPP
 }
-// calibrateStorage
-Rcpp::List calibrateStorage(std::string type, double low, double high, bool integral);
-RcppExport SEXP _imply_calibrateStorage(SEXP typeSEXP, SEXP lowSEXP, SEXP highSEXP, SEXP integralSEXP) {
+// reduceOverMarginPacked
+Rcpp::NumericVector reduceOverMarginPacked(Rcpp::RawVector values, std::string type, Rcpp::IntegerVector dim, Rcpp::IntegerVector margin, std::string what, double slope, double intercept, bool naRm, int threads);
+RcppExport SEXP _imply_reduceOverMarginPacked(SEXP valuesSEXP, SEXP typeSEXP, SEXP dimSEXP, SEXP marginSEXP, SEXP whatSEXP, SEXP slopeSEXP, SEXP interceptSEXP, SEXP naRmSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::RawVector >::type values(valuesSEXP);
     Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
-    Rcpp::traits::input_parameter< double >::type low(lowSEXP);
-    Rcpp::traits::input_parameter< double >::type high(highSEXP);
-    Rcpp::traits::input_parameter< bool >::type integral(integralSEXP);
-    rcpp_result_gen = Rcpp::wrap(calibrateStorage(type, low, high, integral));
-    return rcpp_result_gen;
-END_RCPP
-}
-// packNarrow
-Rcpp::RawVector packNarrow(Rcpp::RObject x, std::string type, double slope, double intercept);
-RcppExport SEXP _imply_packNarrow(SEXP xSEXP, SEXP typeSEXP, SEXP slopeSEXP, SEXP interceptSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::RObject >::type x(xSEXP);
-    Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
-    Rcpp::traits::input_parameter< double >::type slope(slopeSEXP);
-    Rcpp::traits::input_parameter< double >::type intercept(interceptSEXP);
-    rcpp_result_gen = Rcpp::wrap(packNarrow(x, type, slope, intercept));
-    return rcpp_result_gen;
-END_RCPP
-}
-// unpackNarrow
-Rcpp::NumericVector unpackNarrow(Rcpp::RawVector packed, std::string type, double count, double slope, double intercept);
-RcppExport SEXP _imply_unpackNarrow(SEXP packedSEXP, SEXP typeSEXP, SEXP countSEXP, SEXP slopeSEXP, SEXP interceptSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::RawVector >::type packed(packedSEXP);
-    Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
-    Rcpp::traits::input_parameter< double >::type count(countSEXP);
-    Rcpp::traits::input_parameter< double >::type slope(slopeSEXP);
-    Rcpp::traits::input_parameter< double >::type intercept(interceptSEXP);
-    rcpp_result_gen = Rcpp::wrap(unpackNarrow(packed, type, count, slope, intercept));
-    return rcpp_result_gen;
-END_RCPP
-}
-// narrowElements
-Rcpp::NumericVector narrowElements(Rcpp::RawVector packed, std::string type, double count, Rcpp::NumericVector indices, double slope, double intercept);
-RcppExport SEXP _imply_narrowElements(SEXP packedSEXP, SEXP typeSEXP, SEXP countSEXP, SEXP indicesSEXP, SEXP slopeSEXP, SEXP interceptSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::RawVector >::type packed(packedSEXP);
-    Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
-    Rcpp::traits::input_parameter< double >::type count(countSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type indices(indicesSEXP);
-    Rcpp::traits::input_parameter< double >::type slope(slopeSEXP);
-    Rcpp::traits::input_parameter< double >::type intercept(interceptSEXP);
-    rcpp_result_gen = Rcpp::wrap(narrowElements(packed, type, count, indices, slope, intercept));
-    return rcpp_result_gen;
-END_RCPP
-}
-// narrowSummary
-Rcpp::List narrowSummary(Rcpp::RawVector packed, std::string type, double count, double slope, double intercept, bool naRm);
-RcppExport SEXP _imply_narrowSummary(SEXP packedSEXP, SEXP typeSEXP, SEXP countSEXP, SEXP slopeSEXP, SEXP interceptSEXP, SEXP naRmSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::RawVector >::type packed(packedSEXP);
-    Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
-    Rcpp::traits::input_parameter< double >::type count(countSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type dim(dimSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type margin(marginSEXP);
+    Rcpp::traits::input_parameter< std::string >::type what(whatSEXP);
     Rcpp::traits::input_parameter< double >::type slope(slopeSEXP);
     Rcpp::traits::input_parameter< double >::type intercept(interceptSEXP);
     Rcpp::traits::input_parameter< bool >::type naRm(naRmSEXP);
-    rcpp_result_gen = Rcpp::wrap(narrowSummary(packed, type, count, slope, intercept, naRm));
+    Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(reduceOverMarginPacked(values, type, dim, margin, what, slope, intercept, naRm, threads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// reduceOverMarginSparse
+Rcpp::NumericVector reduceOverMarginSparse(Rcpp::RawVector mask, Rcpp::RObject values, Rcpp::IntegerVector dim, int spatial, Rcpp::IntegerVector margin, std::string what, bool naRm, int threads);
+RcppExport SEXP _imply_reduceOverMarginSparse(SEXP maskSEXP, SEXP valuesSEXP, SEXP dimSEXP, SEXP spatialSEXP, SEXP marginSEXP, SEXP whatSEXP, SEXP naRmSEXP, SEXP threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::RawVector >::type mask(maskSEXP);
+    Rcpp::traits::input_parameter< Rcpp::RObject >::type values(valuesSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type dim(dimSEXP);
+    Rcpp::traits::input_parameter< int >::type spatial(spatialSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type margin(marginSEXP);
+    Rcpp::traits::input_parameter< std::string >::type what(whatSEXP);
+    Rcpp::traits::input_parameter< bool >::type naRm(naRmSEXP);
+    Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(reduceOverMarginSparse(mask, values, dim, spatial, margin, what, naRm, threads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -516,14 +505,16 @@ static const R_CallMethodDef CallEntries[] = {
     {"_imply_applyOverMargin", (DL_FUNC) &_imply_applyOverMargin, 9},
     {"_imply_applyOverMarginPacked", (DL_FUNC) &_imply_applyOverMarginPacked, 13},
     {"_imply_applyOverMarginSparse", (DL_FUNC) &_imply_applyOverMarginSparse, 12},
-    {"_imply_reduceOverMargin", (DL_FUNC) &_imply_reduceOverMargin, 5},
-    {"_imply_reduceOverMarginPacked", (DL_FUNC) &_imply_reduceOverMarginPacked, 9},
-    {"_imply_reduceOverMarginSparse", (DL_FUNC) &_imply_reduceOverMarginSparse, 8},
-    {"_imply_orientationFromXform", (DL_FUNC) &_imply_orientationFromXform, 1},
     {"_imply_invertXform", (DL_FUNC) &_imply_invertXform, 1},
     {"_imply_pointsToVoxel", (DL_FUNC) &_imply_pointsToVoxel, 4},
     {"_imply_pointsFromVoxel", (DL_FUNC) &_imply_pointsFromVoxel, 4},
     {"_imply_roundPoints", (DL_FUNC) &_imply_roundPoints, 3},
+    {"_imply_valueRange", (DL_FUNC) &_imply_valueRange, 1},
+    {"_imply_calibrateStorage", (DL_FUNC) &_imply_calibrateStorage, 4},
+    {"_imply_packNarrow", (DL_FUNC) &_imply_packNarrow, 4},
+    {"_imply_unpackNarrow", (DL_FUNC) &_imply_unpackNarrow, 5},
+    {"_imply_narrowElements", (DL_FUNC) &_imply_narrowElements, 6},
+    {"_imply_narrowSummary", (DL_FUNC) &_imply_narrowSummary, 6},
     {"_imply_rasterInfo", (DL_FUNC) &_imply_rasterInfo, 3},
     {"_imply_flattenIndices", (DL_FUNC) &_imply_flattenIndices, 4},
     {"_imply_expandIndices", (DL_FUNC) &_imply_expandIndices, 4},
@@ -533,12 +524,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_imply_chunkPartition", (DL_FUNC) &_imply_chunkPartition, 2},
     {"_imply_permuteView", (DL_FUNC) &_imply_permuteView, 5},
     {"_imply_dataAddress", (DL_FUNC) &_imply_dataAddress, 1},
-    {"_imply_valueRange", (DL_FUNC) &_imply_valueRange, 1},
-    {"_imply_calibrateStorage", (DL_FUNC) &_imply_calibrateStorage, 4},
-    {"_imply_packNarrow", (DL_FUNC) &_imply_packNarrow, 4},
-    {"_imply_unpackNarrow", (DL_FUNC) &_imply_unpackNarrow, 5},
-    {"_imply_narrowElements", (DL_FUNC) &_imply_narrowElements, 6},
-    {"_imply_narrowSummary", (DL_FUNC) &_imply_narrowSummary, 6},
+    {"_imply_reduceOverMargin", (DL_FUNC) &_imply_reduceOverMargin, 5},
+    {"_imply_reduceOverMarginPacked", (DL_FUNC) &_imply_reduceOverMarginPacked, 9},
+    {"_imply_reduceOverMarginSparse", (DL_FUNC) &_imply_reduceOverMarginSparse, 8},
     {"_imply_denseToSparse", (DL_FUNC) &_imply_denseToSparse, 2},
     {"_imply_sparseToDense", (DL_FUNC) &_imply_sparseToDense, 4},
     {"_imply_sparseElements", (DL_FUNC) &_imply_sparseElements, 5},
