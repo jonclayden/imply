@@ -10,3 +10,4 @@
 ^\.cache$
 ^AGENTS\.md$
 ^CLAUDE\.md$
+^README\.Rmd$

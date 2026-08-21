@@ -1,0 +1,367 @@
+```{r, echo=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment="#>")
+```
+
+[![CI](https://github.com/jonclayden/imply/actions/workflows/ci.yaml/badge.svg)](https://github.com/jonclayden/imply/actions/workflows/ci.yaml)
+
+# imply: Efficient Generalised Images for R
+
+`imply` (a portmanteau of "image" and "apply") provides data structures for
+*generalised images* — two- or three-dimensional rasters that may hold a
+vector or time series at each location rather than a single intensity —
+together with infrastructure for memory-efficiently applying functions to
+them. The primary use case is medical imaging, but nothing in the package
+assumes it.
+
+The package deliberately sits *below* the existing R imaging stack: it has no
+dependency on any file format, and an image's geometry is a plain 4x4 affine.
+[`RNifti`](https://github.com/jonclayden/RNifti) and
+[`tractor.base`](https://github.com/jonclayden/tractor.base) interoperate
+through optional bridges rather than being depended upon.
+
+`imply` is distinguished by
+
+- three storage representations — an ordinary R array, a masked sparse form,
+  and a narrow packed form — behind **one** apply engine, so a kernel written
+  once runs unchanged whichever way the data happens to be held;
+- `imapply()`, which gives bit-identical results to `base::apply()` but at
+  roughly half the peak memory, because a sub-array is gathered directly
+  through the stride vector rather than the whole array first being permuted
+  into a fresh copy; and
+- modest dependencies: only `Rcpp`, `S7`, `methods`, `parallel`, `stats` and
+  `utils`.
+
+The latest development version of the package can be installed from GitHub
+using the `remotes` package.
+
+```{r, eval=FALSE}
+## install.packages("remotes")
+remotes::install_github("jonclayden/imply")
+```
+
+## Image types
+
+`imply` supports three storage representations, chosen for how the data is
+best used rather than how it happens to arrive.
+
+| | class | storage | good for |
+|---|---|---|---|
+| dense | `denseImage` | an ordinary R array, any storage mode | general use; anything not covered below |
+| sparse | `sparseImage` | a bitset mask over spatial locations, plus values packed in location order | images that are mostly zero outside a mask, such as brain-masked data |
+| packed | `packedImage` | a raw vector reinterpreted as `float32`/`int16`/…, with a slope and intercept | large images where the values are not all needed as `double` at once, such as raw scanner data |
+
+A `denseImage` wraps an array with some geometry attached: how many of the
+leading dimensions are spatial, the size of a voxel, and the 4x4 affine
+mapping voxel to world coordinates.
+
+```{r}
+library(imply)
+
+set.seed(1)
+data <- array(rnorm(4 * 5 * 6 * 10), dim = c(4, 5, 6, 10))
+image <- denseImage(data, pixdim = c(2, 2, 2.5), spatial = 3)
+image
+```
+
+Here the image is 4 x 5 x 6 spatially, with a ten-point time series at each
+location — `spatial = 3` says so explicitly, though it would have been
+inferred anyway, since `spatial()` defaults to the first three dimensions or
+however many there are, whichever is fewer.
+
+```{r}
+dim(image)
+spatial(image)
+pixdim(image)
+xform(image)
+orientation(image)
+```
+
+`orientation()` reads off the sign and order of the affine's columns and
+reports it compactly: `"RAS"` here means the positive x-axis points right, y
+anterior, z superior — see `?geometry` for the convention. `voxelToWorld()`
+and `worldToVoxel()` convert points between voxel and world space using the
+same affine, in the zero-based voxel coordinates the transform itself uses
+(as opposed to R's one-based array indexing):
+
+```{r}
+worldToVoxel(c(0, 0, 0), image)
+voxelToWorld(c(1, 1, 1), image)
+```
+
+Because a `denseImage` is a plain array underneath, ordinary R operations —
+indexing, arithmetic, comparison — work on it directly and return a plain
+array, since an arbitrary index or elementwise result has no well-defined
+geometry of its own.
+
+### Converting between representations
+
+`asSparse()`, `asDense()` and `asPacked()` convert freely between the three
+representations; `asDenseImage()` promotes any plain array to a `denseImage`
+without touching data already in one.
+
+```{r}
+sparse <- asSparse(image > 2) # a location is "present" only while some value in it is
+sparse
+sparseness(sparse)
+```
+
+A sparse image's mask can be recovered as a logical array with `mask()`, and
+its stored values as a matrix with one column per present location — the
+shape most voxelwise analysis wants — with `maskedMatrix()`. Because a
+`sparseImage` stores its values already packed that way, this costs no copy.
+
+```{r}
+mask(sparse)[1:2, 1:2, 1]
+dim(maskedMatrix(sparse))
+```
+
+`asPacked()` narrows storage to one of the NIfTI-style integer or `float32`
+types, choosing a slope and intercept automatically so the type's whole range
+is used.
+
+```{r}
+packed <- asPacked(image, type = "int16")
+packed
+```
+
+`asDense()` unpacks whichever compact representation it is given, so code
+that just wants ordinary values need not ask which one it has:
+
+```{r}
+back <- asDense(packed)
+range(as.array(back) - as.array(image)) # narrowing loses some precision, but very little
+```
+
+`storageType()` reports `"double"`, `"integer"` and so on for anything that
+is not a packed image, and the packed type otherwise, so it can be used
+without first checking which kind of image is in hand. `isDenseImage()`,
+`isSparseImage()` and `isPackedImage()` (and the umbrella `isImage()`) are the
+right way to test what an image is — because S7 qualifies its class names
+with the package, `inherits(x, "denseImage")` is always `FALSE`.
+
+```{r}
+storageType(image)
+storageType(packed)
+isPackedImage(packed)
+```
+
+A `template = ` argument, accepted by all three constructors and by
+`asDense()`/`asSparse()`/`asPacked()`, carries geometry over from an existing
+image when only the data is changing.
+
+```{r}
+doubled <- denseImage(as.array(image) * 2, template = image)
+pixdim(doubled)
+```
+
+## Applying and reducing functions
+
+`imapply()` is the memory-efficient analogue of `base::apply()`: it gives
+the same answer for the same `margin`, but gathers each sub-array directly
+through the image's strides rather than permuting the whole array into a
+fresh copy first, so peak memory is the input plus the result rather than
+twice the input plus the result.
+
+```{r}
+totals <- imapply(image, 4, sum)
+totals
+```
+
+Three further verbs differ only in how much of the *space* is handed to the
+function at a time — a single location, a line, or a slice — with the values
+held at each location always travelling along with it:
+
+```
+dim(x) = 4 x 5 x 6 x 10, spatial = 3
+
+voxelApply(x, f)           f sees  10
+lineApply(x, f, axis = 1)  f sees  4 x 10
+sliceApply(x, f, axis = 3) f sees  4 x 5 x 10
+```
+
+```{r}
+means <- voxelApply(image, mean)
+means # a single value per location comes back as an image, with the same geometry
+```
+
+```{r}
+lineMeans <- lineApply(image, rowMeans, axis = 1)
+dim(lineMeans)
+
+sliceMeans <- sliceApply(image, mean, axis = 3)
+sliceMeans
+```
+
+`voxelApply()` accepts a `mask = ` — a logical array, a sparse image, or any
+numeric array where non-zero means selected — and visits only those
+locations, leaving `fill` (`0` by default) everywhere else. The loop runs
+over a packed matrix of just the selected columns, so a sparse image being
+masked by its own mask costs nothing extra.
+
+```{r}
+masked <- voxelApply(image, mean, mask = sparse)
+masked[1:2, 1:2, 1]
+```
+
+For a long-running call, `progress = TRUE` draws a text bar showing
+percentage complete and throughput in voxels per second (or pass a function
+of `(done, total)` to report however you like):
+
+```{r, eval=FALSE}
+voxelApply(image, slow_function, progress = TRUE)
+#>   |======================            | 62%  1.4M voxels/s
+```
+
+### Reductions
+
+A handful of summaries — `min`, `max`, `range`, `which.min`, `which.max`,
+plus `sum`, `mean`, `prod`, `var`, `sd`, `any`, `all` and `countNA` — can be
+computed without calling back into R at all, using `imreduce()`:
+
+```{r}
+imreduce(image, 4, "range")
+```
+
+`imapply()` recognises calls to the base equivalents of `min`, `max`,
+`range`, `which.min` and `which.max` and routes to `imreduce()`
+automatically, since these are the only ones provably guaranteed to give the
+same answer either way — the arithmetic reductions can differ from
+`imapply(x, margin, sum)` in the last bit, because R accumulates `sum()` and
+`mean()` in long double.
+
+```{r}
+identical(imapply(image, 4, max), imreduce(image, 4, "max"))
+```
+
+## Interoperability
+
+`imply` knows nothing about file formats, so reading and writing goes
+through packages that do. Bridges to and from
+[`RNifti`](https://github.com/jonclayden/RNifti) and
+[`tractor.base`](https://github.com/jonclayden/tractor.base) are available
+whenever those packages are installed, and are simple by construction: a
+NIfTI image's `xform` is exactly what `xform()` holds.
+
+```{r}
+nim <- toNifti(image)
+class(nim)
+
+back <- fromNifti(nim)
+identical(as.array(back), as.array(image))
+```
+
+```{r}
+mri <- toMriImage(image)
+class(mri)
+
+back <- fromMriImage(mri)
+dim(back)
+```
+
+## Parallelism
+
+Work is parallelised in one of two ways, according to what is being run.
+Compiled reductions run concurrently in-process, using Grand Central Dispatch
+where it is available and OpenMP otherwise:
+
+```{r}
+parallelBackend()
+```
+
+An R function passed to `imapply()` and its variants cannot run on a worker
+thread — R's interpreter is not reentrant — so that work is instead
+parallelised by forking the R session, which is unavailable on Windows
+(`canFork()` reports whether it is available here). Pass `threads = ` to any
+apply or reduce call, or set it globally:
+
+```{r, eval=FALSE}
+options(imply.threads = 4)
+```
+
+```{r}
+resolveThreads(2)
+```
+
+## API
+
+The apply/reduce engine, the accessors that let one kernel body read dense,
+sparse and narrowly-stored images alike, and the geometry machinery behind
+`orientation()` and friends, are all available to other packages' compiled
+code — not just to `imply` itself. Everything under `inst/include/` is
+header-only, so using it costs nothing to link against.
+
+```
+LinkingTo: imply
+```
+
+in a package's `DESCRIPTION` is enough; there is no library to link, only the
+one header to include.
+
+```c++
+#include "imply.h"
+```
+
+The pieces most likely to be wanted from outside:
+
+- **`Raster<D>`** — an n-dimensional index space with general strides, split
+  at a runtime `spatial` index into leading spatial dimensions and trailing
+  value dimensions. `FixedRaster<D>` keeps extents and indices on the stack
+  when the dimensionality is known while compiling; `DynamicRaster` covers
+  the rest.
+- **`OffsetWalker`** — odometer traversal of an arbitrary subset of an
+  image's dimensions, yielding memory offsets one addition at a time with no
+  allocation. This is what lets a sub-array be gathered without permuting
+  the whole image first.
+- **`ImageSpace`** and **`Affine`** — voxel-to-world geometry, with the point
+  conversions and rounding strategies that go with it, and no dependency on
+  any file format.
+- **`parallelFor`** — divides a range into chunks and runs them concurrently
+  over libdispatch, OpenMP or a plain loop, whichever was compiled in.
+  Nothing passed to it may touch the R API, allocate R objects, or draw from
+  R's RNG, none of which are thread-safe.
+- **`dispatchType`**, **`dispatchNarrowType`** and **`dispatchDims`** — the
+  R-boundary switches from a runtime `SEXP`'s storage mode (or
+  dimensionality) to a compile-time type tag, meant to be called exactly
+  once per entry point so that everything below it is fully typed.
+- **`DenseAccessor`**, **`SparseAccessor`** and **`NarrowAccessor`**, plus
+  **`LocationMask`** — an `operator[]` over a plain pointer, a masked and
+  packed array, or narrow storage respectively, sharing one interface so
+  that a kernel written against it serves all three without modification.
+- **`Sink`**, **`VectorSink`**, **`TypedSink`** and **`ListSink`** —
+  preallocated result accumulation for a per-call loop, falling back to a
+  list only once a result turns out not to fit a plain vector.
+
+A kernel that sums a numeric vector, written once against the shared
+accessor interface, therefore works whether the underlying storage is a
+plain R vector or something more compact:
+
+```c++
+// [[Rcpp::depends(imply)]]
+#include "imply.h"
+#include <Rcpp.h>
+
+using namespace imply;
+
+// One kernel body serves dense, sparse and narrow storage alike; only the
+// accessor differs
+template <typename Accessor>
+double sumOver (const Accessor &values, const Extent n)
+{
+    double total = 0;
+    for (Extent i = 0; i < n; i++)
+        total += static_cast<double>(values[i]);
+    return total;
+}
+
+// [[Rcpp::export]]
+double denseSum (Rcpp::NumericVector x)
+{
+    DenseAccessor<double> accessor(REAL(x));
+    return sumOver(accessor, Rf_xlength(x));
+}
+```
+
+There is no separate API reference beyond the headers themselves: each one
+opens with a comment explaining what it is for, and `imply.h` is a short
+umbrella summarising all of them together — reading it is the fastest way
+in.
