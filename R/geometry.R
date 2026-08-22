@@ -13,26 +13,21 @@
 #' matrix that carries rotation and translation and so has to be kept in sync
 #' by hand. Here, `voxelSize<-` never touches rotation or translation, and
 #' the stored placement is always a rigid transform (rotation or reflection
-#' plus translation, no scale and no shear) so that the two cannot drift out
-#' of agreement. This follows the convention used by MRtrix's `.mif` format,
-#' whose image axes "are always normalised to unit amplitude", voxel size
-#' being applied separately.
+#' plus translation; no scale and no shear) so that the two cannot drift out
+#' of agreement.
 #'
 #' `worldTransform()` composes the two into the single 4x4 affine that other
 #' packages expect. Setting it back decomposes the matrix into rotation and
 #' scale; a matrix that doesn't decompose that way (i.e. one with genuine
 #' shear) is rejected rather than silently mangled. In practice a sheared
-#' `sform` usually means the field is being used to carry an affine
+#' NIfTI `sform` usually means the field is being used to carry an affine
 #' registration or normalisation result (to Talairach or MNI space, say)
 #' rather than to describe voxel storage geometry, which is a different kind
 #' of information than this package models.
 #'
 #' `toVoxel()` and `fromVoxel()` use one-based voxel coordinates, matching
-#' `x[i, j, k]` indexing, so that a location can be looked up and converted
-#' with the same numbers rather than an offset one having to be kept in mind
-#' between them. The affine itself, and the rest of the package's C++ API, is
-#' zero-based throughout, as NIfTI and MRtrix both are; the shift is applied
-#' only at this R-facing boundary.
+#' `x[i, j, k]` indexing. The affine itself, and the rest of the package's C++
+#' API, is zero-based throughout.
 #'
 #' @param x An image, or for `worldTransform` either an image or a 4x4 matrix.
 #' @param value A replacement value.
@@ -69,14 +64,8 @@ voxelSize <- function (x) attr(x, "voxelSize") %||% rep(1, spatial(x))
 `voxelSize<-` <- function (x, value)
 {
     value <- as.double(value)
-    ## Whatever kind of image x already is, that is preserved: a sparse or
-    ## packed image has its own voxelSize property, set in place, rather than
-    ## being densified as a side effect of what is meant to be a cheap
-    ## metadata assignment. Only a non-image (a plain array) is promoted
     if (!isImage(x))
         x <- denseImage(x)
-    ## Orientation is untouched: this is the whole point of storing the two
-    ## independently rather than folding voxel size into the transform
     x@voxelSize <- value
     x
 }
@@ -101,7 +90,7 @@ worldTransform <- function (x)
 #' @export
 `worldTransform<-` <- function (x, value)
 {
-    ## As for voxelSize<-: preserve whatever image class x already is
+    ## As for voxelSize<-(): preserve whatever image class x already is
     if (!isImage(x))
         x <- denseImage(x)
     decomposed <- decomposeTransform(validateXform(value), x@spatial)
@@ -193,10 +182,7 @@ toVoxel <- function (points, x, type = "world", round = "none", bounds = NULL)
             bounds <- as.double(dim(x)[seq_len(min(3L, spatial(x)))])
         result <- roundPoints(result, round, bounds)
     }
-    ## The affine and the rounding above both work in zero-based voxel space,
-    ## as NIfTI and the compiled side do; the result is shifted to one-based
-    ## only here, so it lines up with x[i,j,k] indexing. A "voxel" input is
-    ## already in that one-based convention, so it passes straight through
+    ## Standard one-based indexing for R
     if (!identical(type, "voxel"))
         result <- result + 1
     result

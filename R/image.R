@@ -3,12 +3,16 @@
 #' A dense image is an array carrying image geometry alongside it. It is an S7
 #' class whose parent is the `array` S3 class, which means every storage mode
 #' works (double, integer, logical and complex all occur in practice, masks
-#' being logical), the data are still a plain R array so no copy is needed to
+#' being logical). The data are still a plain R array, so no copy is needed to
 #' pass them to compiled code, and the geometry is validated whenever it is
 #' set rather than only on construction.
 #'
 #' Properties are stored as ordinary attributes, so compiled code reads them
 #' without needing to know anything about S7.
+#' 
+#' @note S7 qualifies a class name with its package, so the class
+#' attribute is `"imply::denseImage"` and `inherits(x, "denseImage")` is
+#' `FALSE`. Use `isDenseImage()` rather than testing the class directly.
 #'
 #' @param .data An array, or any atomic vector, which is treated as
 #'   one-dimensional.
@@ -19,9 +23,10 @@
 #' @param spatial The number of leading dimensions that index location rather
 #'   than the value held at each location. Defaults to three, or the
 #'   dimensionality if that is smaller.
-#' @param spaceUnit,timeUnit Units of measurement.
+#' @param spaceUnit, timeUnit Units of measurement.
 #' @param template An image to take unspecified geometry from.
 #' @param x An image.
+#' @param ... Further arguments to `denseImage()`.
 #' @name denseImage
 NULL
 
@@ -107,34 +112,37 @@ denseImage <- S7::new_class("denseImage",
 
 #' @rdname denseImage
 #' @export
-#' @details
-#' Note that S7 qualifies a class name with its package, so the class
-#' attribute is `"imply::denseImage"` and `inherits(x, "denseImage")` is
-#' `FALSE`. Use `isDenseImage()` rather than testing the class directly.
 isDenseImage <- function (x) S7::S7_inherits(x, denseImage)
 
-## Internal helper for the residual case once asDense() has ruled out sparse
-## and packed input: return an already-dense image unchanged, or otherwise
-## treat x as raw data and build one. Not exported -- asDense() is the public
-## "coerce whatever representation to dense" verb; this is not a weaker
-## substitute for it, since it does not understand sparse or packed images at
-## all (deliberately: callers that reach here have already excluded them)
-asDenseImage <- function (x, ...)
+#' @rdname denseImage
+#' @export
+asDense <- function (x, ...)
 {
+    ## Unpacks whichever of the compact representations it is given, so a
+    ## caller that just wants ordinary values need not ask which one it has.
     if (isDenseImage(x))
-        x
+        return (x)
+    else if (isPackedImage(x))
+        return(denseImage(as.array(x), spatial = x@spatial, voxelSize = x@voxelSize,
+                          worldTransform = worldTransform(x),
+                          spaceUnit = x@spaceUnit, timeUnit = x@timeUnit))
+    else if (isSparseImage(x))
+        return(denseImage(sparseToDense(x@mask, x@values, x@dims, x@spatial),
+                          spatial = x@spatial, voxelSize = x@voxelSize,
+                          worldTransform = worldTransform(x), spaceUnit = x@spaceUnit,
+                          timeUnit = x@timeUnit))
     else
-        denseImage(x, ...)
+        return(denseImage(x, ...))
 }
 
-## Subsetting. S7 objects are not subsettable by default, so without these an
-## image could not be indexed at all.
+## S7 objects are not subsettable by default, so without these methods an image
+## could not be indexed at all
 ##
 ## The result is a plain array rather than an image: an arbitrary index has no
 ## well-defined geometry, and this matches both base R's behaviour for a
 ## classed array and the convention established by tractor.base. Use crop()
-## when the geometry should be carried through.
-
+## when the geometry should be carried through
+##
 ## The call is rebuilt rather than forwarded, because missing index arguments
 ## (as in x[,,1]) cannot be passed through `...` faithfully
 S7::method(`[`, denseImage) <- function (x, ..., drop = TRUE)

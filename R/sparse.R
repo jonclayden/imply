@@ -3,23 +3,23 @@
 #' A sparse image stores only those spatial locations that hold data. Sparsity
 #' is over *locations*, not over individual values: a location is either
 #' present, in which case the whole vector of values held there is stored, or
-#' absent, in which case every one of them is implicitly zero. That is what a
-#' brain mask actually is, and it keeps the stored values contiguous.
+#' absent, in which case every one of them is implicitly zero. That generally
+#' matches the intent, and it keeps the stored values contiguous.
 #'
 #' The mask is one bit per location and the values are packed in location
 #' order, so finding a value costs a table lookup and a bit count rather than a
 #' search. A coordinate list, the other common representation, would store
-#' three or four indices alongside every value, and typically costs more memory
-#' than it saves at the densities medical images actually have.
+#' three or four indices alongside every value, and may cost more memory than
+#' saves at typical densities.
 #'
 #' A location holding `NA` is kept, since `NA` is not zero. Packing an image
 #' therefore loses nothing.
 #'
-#' @param x An image, array, or for `asDense()` a sparse image.
-#' @param ... Further arguments to `denseImage()` or `sparseImage()`.
+#' @param x An image or array.
+#' @param ... Further arguments to `sparseImage()`.
 #' @param mask A raw vector of one bit per location, or a logical vector.
 #' @param values Packed values, in location order.
-#' @param dim,spatial,voxelSize,worldTransform,spaceUnit,timeUnit Image
+#' @param dim, spatial, voxelSize, worldTransform, spaceUnit, timeUnit Image
 #'   geometry, as for [denseImage()].
 #' @param template An image to take unspecified geometry from.
 #' @name sparseImage
@@ -126,8 +126,6 @@ asSparse <- function (x, ...)
     if (isSparseImage(x))
         return(x)
 
-    ## asDense(), not asDenseImage(): x may be a packed image, which the
-    ## latter does not understand
     image <- asDense(x, ...)
     packed <- denseToSparse(as.array(image), image@spatial)
 
@@ -136,28 +134,7 @@ asSparse <- function (x, ...)
                 spaceUnit = image@spaceUnit, timeUnit = image@timeUnit)
 }
 
-#' @rdname sparseImage
-#' @export
-asDense <- function (x, ...)
-{
-    ## Unpacks whichever of the compact representations it is given, so a
-    ## caller that just wants ordinary values need not ask which one it has.
-    ## This is the general "coerce to dense" verb; asDenseImage() is only the
-    ## residual case below, once packed and sparse have both been ruled out
-    if (isPackedImage(x))
-        return(denseImage(as.array(x), spatial = x@spatial, voxelSize = x@voxelSize,
-                          worldTransform = worldTransform(x),
-                          spaceUnit = x@spaceUnit, timeUnit = x@timeUnit))
-
-    if (!isSparseImage(x))
-        return(asDenseImage(x, ...))
-
-    denseImage(sparseToDense(x@mask, x@values, x@dims, x@spatial),
-               spatial = x@spatial, voxelSize = x@voxelSize, worldTransform = worldTransform(x),
-               spaceUnit = x@spaceUnit, timeUnit = x@timeUnit)
-}
-
-#' `maskedMatrix()` returns the stored values with one column per stored
+#' `maskedMatrix()` returns the stored values, with one column per stored
 #' location, which is the data matrix most voxelwise analysis wants: nothing
 #' outside the mask is present at all, and the values at one location are
 #' contiguous. Packing is voxel-major, so this is the shape the values are

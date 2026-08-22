@@ -1,32 +1,30 @@
 #' Narrow storage types
 #'
-#' R has no single-precision type, so a large image held as `double` costs
-#' twice the memory it needs, and — since these passes are bandwidth-bound —
-#' roughly twice the time. Raw MRI is commonly 16-bit integer, four times
-#' narrower again.
+#' R has no single-precision floating-point type, so a large image held as
+#' `double` may cost twice the memory it needs, and potentially roughly twice
+#' the time. Raw MRI is commonly 16-bit integer.
 #'
-#' A packed image stores its values in one of the NIfTI-style narrow types,
-#' with an optional affine scaling, so that an integer type can carry a range
+#' Recognising this, a packed image stores its values using a narrow data type,
+#' with optional affine scaling, so that an integer type can carry a range
 #' it could not otherwise hold: `value = stored * slope + intercept`. When a
 #' scaling is needed it is chosen automatically to map the data across the
 #' whole of the type's range.
 #'
 #' The values live in a raw vector, so they are garbage-collected, serialise,
-#' and survive a save and load like any other R object. Nothing needs an
-#' external pointer or a finalizer.
+#' and survive a save and load like any other R object.
 #'
-#' Missing values can only be carried by `float32`; packing data containing
-#' `NA` to an integer type is refused rather than silently losing it. Note
-#' that `NA` and `NaN` are not distinguished once packed, since the payload
-#' that separates them does not survive the narrowing.
+#' @note Missing values can only be carried by `float32`; packing data
+#' containing `NA` to an integer type is refused rather than silently losing
+#' it. Note that `NA` and `NaN` are not distinguished once packed, since the
+#' payload that separates them does not survive the narrowing.
 #'
 #' @param x An image or array.
-#' @param type,storageType One of `"int8"`, `"uint8"`, `"int16"`, `"uint16"`,
+#' @param type, storageType One of `"int8"`, `"uint8"`, `"int16"`, `"uint16"`,
 #'   `"int32"` or `"float32"`.
-#' @param slope,intercept Scaling applied to stored values. Chosen
+#' @param slope, intercept Scaling applied to stored values. Chosen
 #'   automatically when not given.
 #' @param values A raw vector holding the packed values.
-#' @param dims,spatial,voxelSize,worldTransform,spaceUnit,timeUnit Image
+#' @param dims, spatial, voxelSize, worldTransform, spaceUnit, timeUnit Image
 #'   geometry, as for [denseImage()].
 #' @param template An image to take unspecified geometry from.
 #' @param ... Further arguments to `denseImage()`.
@@ -130,8 +128,6 @@ asPacked <- function (x, type = "float32", slope = NULL, intercept = NULL, ...)
     if (isPackedImage(x) && identical(x@storageType, type))
         return(x)
 
-    ## asDense(), not asDenseImage(): x may already be a packed image, of a
-    ## different type, which the latter does not understand
     image <- asDense(x, ...)
     values <- as.array(image)
 

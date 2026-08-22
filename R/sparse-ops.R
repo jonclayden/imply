@@ -5,9 +5,7 @@
 ## the operation can be applied to the stored values alone and the result stays
 ## sparse. If it is not -- as for `x + 1`, where every absent location becomes
 ## one -- then the result genuinely is dense, and saying so is more honest than
-## re-sparsifying at some threshold and hoping. tractor.base takes the latter
-## course, densifying for all arithmetic and re-packing only when the result is
-## at least 75% zeros.
+## re-sparsifying at some threshold and hoping
 
 binaryOperators <- c("+", "-", "*", "/", "^", "%%", "%/%",
                      "==", "!=", "<", ">", "<=", ">=", "&", "|")

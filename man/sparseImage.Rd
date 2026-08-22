@@ -4,7 +4,6 @@
 \alias{sparseImage}
 \alias{isSparseImage}
 \alias{asSparse}
-\alias{asDense}
 \alias{maskedMatrix}
 \alias{sparseness}
 \alias{mask}
@@ -26,8 +25,6 @@ isSparseImage(x)
 
 asSparse(x, ...)
 
-asDense(x, ...)
-
 maskedMatrix(x)
 
 sparseness(x)
@@ -39,28 +36,28 @@ mask(x)
 
 \item{values}{Packed values, in location order.}
 
-\item{dim, spatial, voxelSize, worldTransform, spaceUnit, timeUnit}{Image
+\item{dim, }{spatial, voxelSize, worldTransform, spaceUnit, timeUnit Image
 geometry, as for \code{\link[=denseImage]{denseImage()}}.}
 
 \item{template}{An image to take unspecified geometry from.}
 
-\item{x}{An image, array, or for \code{asDense()} a sparse image.}
+\item{x}{An image or array.}
 
-\item{...}{Further arguments to \code{denseImage()} or \code{sparseImage()}.}
+\item{...}{Further arguments to \code{sparseImage()}.}
 }
 \description{
 A sparse image stores only those spatial locations that hold data. Sparsity
 is over \emph{locations}, not over individual values: a location is either
 present, in which case the whole vector of values held there is stored, or
-absent, in which case every one of them is implicitly zero. That is what a
-brain mask actually is, and it keeps the stored values contiguous.
+absent, in which case every one of them is implicitly zero. That generally
+matches the intent, and it keeps the stored values contiguous.
 }
 \details{
 The mask is one bit per location and the values are packed in location
 order, so finding a value costs a table lookup and a bit count rather than a
 search. A coordinate list, the other common representation, would store
-three or four indices alongside every value, and typically costs more memory
-than it saves at the densities medical images actually have.
+three or four indices alongside every value, and may cost more memory than
+saves at typical densities.
 
 A location holding \code{NA} is kept, since \code{NA} is not zero. Packing an image
 therefore loses nothing.

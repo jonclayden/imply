@@ -63,24 +63,19 @@ one another, unlike a NIfTI xform, which bakes voxel size into the same
 matrix that carries rotation and translation and so has to be kept in sync
 by hand. Here, \verb{voxelSize<-} never touches rotation or translation, and
 the stored placement is always a rigid transform (rotation or reflection
-plus translation, no scale and no shear) so that the two cannot drift out
-of agreement. This follows the convention used by MRtrix's \code{.mif} format,
-whose image axes "are always normalised to unit amplitude", voxel size
-being applied separately.
+plus translation; no scale and no shear) so that the two cannot drift out
+of agreement.
 
 \code{worldTransform()} composes the two into the single 4x4 affine that other
 packages expect. Setting it back decomposes the matrix into rotation and
 scale; a matrix that doesn't decompose that way (i.e. one with genuine
 shear) is rejected rather than silently mangled. In practice a sheared
-\code{sform} usually means the field is being used to carry an affine
+NIfTI \code{sform} usually means the field is being used to carry an affine
 registration or normalisation result (to Talairach or MNI space, say)
 rather than to describe voxel storage geometry, which is a different kind
 of information than this package models.
 
 \code{toVoxel()} and \code{fromVoxel()} use one-based voxel coordinates, matching
-\code{x[i, j, k]} indexing, so that a location can be looked up and converted
-with the same numbers rather than an offset one having to be kept in mind
-between them. The affine itself, and the rest of the package's C++ API, is
-zero-based throughout, as NIfTI and MRtrix both are; the shift is applied
-only at this R-facing boundary.
+\code{x[i, j, k]} indexing. The affine itself, and the rest of the package's C++
+API, is zero-based throughout.
 }

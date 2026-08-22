@@ -2,20 +2,21 @@
 #'
 #' `imreduce()` computes a summary over the margins of an image without
 #' calling back into R for each one. That matters for two reasons: there is no
-#' per-call interpreter overhead, and — since nothing touches R — the loop can
+#' per-call interpreter overhead, and (since nothing touches R) the loop can
 #' run on worker threads. `imapply()` recognises the equivalent base functions
-#' and routes to it automatically where it can prove the answer is the same.
+#' and routes calls here automatically where the answer has been shown to be
+#' the same.
 #'
-#' Accumulation is in double whatever the values are stored as, so the answer
-#' does not depend on the storage type and error does not compound with the
-#' number of values.
+#' Accumulation is done in double mode whatever the values are stored as, so
+#' the answer does not depend on the storage type and error does not compound
+#' with the number of values.
 #'
-#' Note that for the arithmetic reductions this need not agree with the base
+#' Note that for the arithmetic reductions this may not agree with the base
 #' equivalent to the last bit: R accumulates `sum()` and `mean()` in long
 #' double, which on some platforms is wider than double. Differences are of
-#' the order of 1e-16. `imapply()` therefore routes automatically only where
-#' the answers are provably identical — `min`, `max`, `range`, `which.min` and
-#' `which.max` — and leaves the rest to be asked for deliberately.
+#' the order of `1e-16`. `imapply()` therefore routes automatically only where
+#' the answers are provably identical (`min`, `max`, `range`, `which.min` and
+#' `which.max`) and leaves the rest to be asked for deliberately.
 #'
 #' `"var"` is the variance of the values, as `var(as.vector(x))` would give.
 #' It is not [stats::var()] applied to a sub-array, which for a matrix returns

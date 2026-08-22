@@ -14,24 +14,22 @@
 #' In every case the values held at each location travel with the unit. So for
 #' an image with a time series at each location, `voxelApply()` passes one
 #' series, `lineApply()` passes a line's worth of series, and `sliceApply()`
-#' passes a slice's worth. This is forced for `voxelApply()`, since a location
-#' on its own carries nothing to compute with, and the other two follow it so
-#' that the three read as one progression.
+#' passes a slice's worth:
 #'
 #' \preformatted{
 #'   dim(x) = 4 x 5 x 6 x 10, spatial = 3
 #'
-#'   voxelApply(x, f)           f sees  10
+#'   voxelApply(x, f)           f sees  10 values
 #'   lineApply(x, f, axis = 1)  f sees  4 x 10
 #'   sliceApply(x, f, axis = 3) f sees  4 x 5 x 10
 #' }
 #'
 #' `axis` always names a spatial dimension, but means what the name of each
 #' function implies: a line *runs along* its axis, whereas a slice is *cut
-#' across* its axis. Use [imapply()] directly to iterate over a non-spatial
+#' across* its axis. Use `imapply()` directly to iterate over a non-spatial
 #' dimension, such as applying a function to each volume in a time series.
 #'
-#' @param x An image, or any array. No custom class is required.
+#' @param x An image or a plain array.
 #' @param margin The dimensions to retain, as for [base::apply()].
 #' @param fun A function to apply.
 #' @param ... Further arguments to `fun`.
@@ -42,7 +40,7 @@
 #'   the percentage complete and the rate in voxels per second, or a function
 #'   of `(done, total)`. See [progress].
 #' @param axis For `lineApply()`, the axis lines run along; for `sliceApply()`,
-#'   the axis slices are cut across.
+#'   the axis slices cut across.
 #' @param mask For `voxelApply()`, a logical array over the spatial dimensions,
 #'   a sparse image whose mask is to be used, or `NULL` for none. Locations
 #'   outside it are not visited at all.
@@ -178,7 +176,7 @@ shapeResult <- function (out, marginDims, marginNames, margin, simplify)
 
 ## When a margin has extent zero there is nothing to iterate over, but the
 ## function is still called once on a dummy sub-array to establish the type of
-## the empty result. This is what base::apply() does
+## the empty result
 applyToEmpty <- function (x, wrapped, callDims, callNames, marginDims, marginNames)
 {
     dummy <- array(vector(typeof(x), 1L), dim = c(prod(callDims), 1L))
@@ -278,16 +276,16 @@ sliceApply <- function (x, fun, ..., axis = 3L, simplify = TRUE, threads = NULL,
 }
 
 
-## Applying only where a mask holds.
+## Applying only where a mask holds
 ##
 ## Nothing is gained by walking a sparse image and gathering zeros for the
 ## locations it does not store: that still makes one call per location. What
 ## saves the work is doing the loop in the packed space, over a matrix with one
-## column per selected location, and scattering the answers back afterwards.
+## column per selected location, and scattering the answers back afterwards
 ##
 ## When the image is already sparse and the mask is its own, that matrix is the
 ## stored values themselves and costs nothing. Otherwise the selected values
-## are gathered once.
+## are gathered once
 maskedVoxelApply <- function (x, fun, ..., mask, fill, simplify, threads, progress)
 {
     dims <- dim(x)

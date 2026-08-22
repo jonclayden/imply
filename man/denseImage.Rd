@@ -3,6 +3,7 @@
 \name{denseImage}
 \alias{denseImage}
 \alias{isDenseImage}
+\alias{asDense}
 \title{Dense images}
 \usage{
 denseImage(
@@ -16,6 +17,8 @@ denseImage(
 )
 
 isDenseImage(x)
+
+asDense(x, ...)
 }
 \arguments{
 \item{.data}{An array, or any atomic vector, which is treated as
@@ -31,25 +34,28 @@ assignment; see \link{geometry}.}
 than the value held at each location. Defaults to three, or the
 dimensionality if that is smaller.}
 
-\item{spaceUnit, timeUnit}{Units of measurement.}
+\item{spaceUnit, }{timeUnit Units of measurement.}
 
 \item{template}{An image to take unspecified geometry from.}
 
 \item{x}{An image.}
+
+\item{...}{Further arguments to \code{denseImage()}.}
 }
 \description{
 A dense image is an array carrying image geometry alongside it. It is an S7
 class whose parent is the \code{array} S3 class, which means every storage mode
 works (double, integer, logical and complex all occur in practice, masks
-being logical), the data are still a plain R array so no copy is needed to
+being logical). The data are still a plain R array, so no copy is needed to
 pass them to compiled code, and the geometry is validated whenever it is
 set rather than only on construction.
 }
 \details{
 Properties are stored as ordinary attributes, so compiled code reads them
 without needing to know anything about S7.
-
-Note that S7 qualifies a class name with its package, so the class
+}
+\note{
+S7 qualifies a class name with its package, so the class
 attribute is \code{"imply::denseImage"} and \code{inherits(x, "denseImage")} is
 \code{FALSE}. Use \code{isDenseImage()} rather than testing the class directly.
 }

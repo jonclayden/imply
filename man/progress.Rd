@@ -29,6 +29,6 @@ Under forked parallelism the work is divided into batches, and the bar
 advances as each batch completes rather than as each call does. A worker
 cannot report on its own behalf: it is a separate process, and several of
 them writing to one console would interleave. The batching costs one extra
-fork per batch, which is negligible against work slow enough to want a
-progress bar in the first place.
+fork per batch, which should be negligible against work slow enough to
+warrant a progress bar in the first place.
 }

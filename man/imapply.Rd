@@ -41,7 +41,7 @@ sliceApply(
 )
 }
 \arguments{
-\item{x}{An image, or any array. No custom class is required.}
+\item{x}{An image or a plain array.}
 
 \item{margin}{The dimensions to retain, as for \code{\link[base:apply]{base::apply()}}.}
 
@@ -65,7 +65,7 @@ outside it are not visited at all.}
 \item{fill}{The value given to locations outside \code{mask}.}
 
 \item{axis}{For \code{lineApply()}, the axis lines run along; for \code{sliceApply()},
-the axis slices are cut across.}
+the axis slices cut across.}
 }
 \value{
 For \code{imapply()}, as \code{\link[base:apply]{base::apply()}}. For \code{voxelApply()}, an image
@@ -87,20 +87,18 @@ line for \code{lineApply()}, and a two-dimensional slice for \code{sliceApply()}
 In every case the values held at each location travel with the unit. So for
 an image with a time series at each location, \code{voxelApply()} passes one
 series, \code{lineApply()} passes a line's worth of series, and \code{sliceApply()}
-passes a slice's worth. This is forced for \code{voxelApply()}, since a location
-on its own carries nothing to compute with, and the other two follow it so
-that the three read as one progression.
+passes a slice's worth:
 
 \preformatted{
   dim(x) = 4 x 5 x 6 x 10, spatial = 3
 
-  voxelApply(x, f)           f sees  10
+  voxelApply(x, f)           f sees  10 values
   lineApply(x, f, axis = 1)  f sees  4 x 10
   sliceApply(x, f, axis = 3) f sees  4 x 5 x 10
 }
 
 \code{axis} always names a spatial dimension, but means what the name of each
 function implies: a line \emph{runs along} its axis, whereas a slice is \emph{cut
-across} its axis. Use \code{\link[=imapply]{imapply()}} directly to iterate over a non-spatial
+across} its axis. Use \code{imapply()} directly to iterate over a non-spatial
 dimension, such as applying a function to each volume in a time series.
 }

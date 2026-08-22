@@ -30,40 +30,39 @@ storageType(x)
 \arguments{
 \item{values}{A raw vector holding the packed values.}
 
-\item{dims, spatial, voxelSize, worldTransform, spaceUnit, timeUnit}{Image
+\item{dims, }{spatial, voxelSize, worldTransform, spaceUnit, timeUnit Image
 geometry, as for \code{\link[=denseImage]{denseImage()}}.}
 
-\item{slope, intercept}{Scaling applied to stored values. Chosen
+\item{slope, }{intercept Scaling applied to stored values. Chosen
 automatically when not given.}
 
 \item{template}{An image to take unspecified geometry from.}
 
 \item{x}{An image or array.}
 
-\item{type, storageType}{One of \code{"int8"}, \code{"uint8"}, \code{"int16"}, \code{"uint16"},
+\item{type, }{storageType One of \code{"int8"}, \code{"uint8"}, \code{"int16"}, \code{"uint16"},
 \code{"int32"} or \code{"float32"}.}
 
 \item{...}{Further arguments to \code{denseImage()}.}
 }
 \description{
-R has no single-precision type, so a large image held as \code{double} costs
-twice the memory it needs, and — since these passes are bandwidth-bound —
-roughly twice the time. Raw MRI is commonly 16-bit integer, four times
-narrower again.
+R has no single-precision floating-point type, so a large image held as
+\code{double} may cost twice the memory it needs, and potentially roughly twice
+the time. Raw MRI is commonly 16-bit integer.
 }
 \details{
-A packed image stores its values in one of the NIfTI-style narrow types,
-with an optional affine scaling, so that an integer type can carry a range
+Recognising this, a packed image stores its values using a narrow data type,
+with optional affine scaling, so that an integer type can carry a range
 it could not otherwise hold: \code{value = stored * slope + intercept}. When a
 scaling is needed it is chosen automatically to map the data across the
 whole of the type's range.
 
 The values live in a raw vector, so they are garbage-collected, serialise,
-and survive a save and load like any other R object. Nothing needs an
-external pointer or a finalizer.
-
-Missing values can only be carried by \code{float32}; packing data containing
-\code{NA} to an integer type is refused rather than silently losing it. Note
-that \code{NA} and \code{NaN} are not distinguished once packed, since the payload
-that separates them does not survive the narrowing.
+and survive a save and load like any other R object.
+}
+\note{
+Missing values can only be carried by \code{float32}; packing data
+containing \code{NA} to an integer type is refused rather than silently losing
+it. Note that \code{NA} and \code{NaN} are not distinguished once packed, since the
+payload that separates them does not survive the narrowing.
 }

@@ -25,7 +25,7 @@ Work is parallelised in one of two ways, according to what is being run.
 }
 \details{
 Compiled kernels run concurrently in process, using Grand Central Dispatch
-where it is available and OpenMP otherwise. Which of these was compiled in
+or OpenMP where one or other is available. Which of these was compiled in
 is reported by \code{parallelBackend()}.
 
 An R function cannot be called from a worker thread, because R is
