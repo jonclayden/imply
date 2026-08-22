@@ -45,4 +45,8 @@
 #include "imply/Narrow.h"
 #include "imply/Sink.h"
 
+// Linked to the package version as 100 * (major version) + (minor version). May not
+// change if the API does not change, and in particular never changes with patch level
+#define IMPLY_API_VERSION 1
+
 #endif
