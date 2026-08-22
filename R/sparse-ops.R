@@ -33,10 +33,6 @@ isStillAbsent <- function (value)
         (isFALSE(value) || isTRUE(all.equal(as.vector(value), 0)))
 }
 
-geometryOf <- function (x)
-    list(spatial = x@spatial, voxelSize = x@voxelSize, worldTransform = worldTransform(x),
-         spaceUnit = x@spaceUnit, timeUnit = x@timeUnit)
-
 rebuild <- function (template, mask, values)
 {
     tight <- tightenMask(mask, values, locationCount(template), elementCount(template))

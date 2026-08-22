@@ -100,15 +100,6 @@ worldTransform <- function (x)
     x
 }
 
-defaultXform <- function (voxelSize)
-{
-    result <- diag(4)
-    n <- min(3L, length(voxelSize))
-    if (n > 0L)
-        diag(result)[seq_len(n)] <- voxelSize[seq_len(n)]
-    result
-}
-
 validateXform <- function (value)
 {
     value <- as.matrix(value)
