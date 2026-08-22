@@ -21,8 +21,7 @@
 #'   dimensionality if that is smaller.
 #' @param spaceUnit,timeUnit Units of measurement.
 #' @param template An image to take unspecified geometry from.
-#' @param x An image, or an object to coerce to one.
-#' @param ... Further arguments to `denseImage()`.
+#' @param x An image.
 #' @name denseImage
 NULL
 
@@ -114,8 +113,12 @@ denseImage <- S7::new_class("denseImage",
 #' `FALSE`. Use `isDenseImage()` rather than testing the class directly.
 isDenseImage <- function (x) S7::S7_inherits(x, denseImage)
 
-#' @rdname denseImage
-#' @export
+## Internal helper for the residual case once asDense() has ruled out sparse
+## and packed input: return an already-dense image unchanged, or otherwise
+## treat x as raw data and build one. Not exported -- asDense() is the public
+## "coerce whatever representation to dense" verb; this is not a weaker
+## substitute for it, since it does not understand sparse or packed images at
+## all (deliberately: callers that reach here have already excluded them)
 asDenseImage <- function (x, ...)
 {
     if (isDenseImage(x))

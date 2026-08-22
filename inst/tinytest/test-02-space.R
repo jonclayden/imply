@@ -68,6 +68,29 @@ expect_equal(voxelSize(image), c(1.2, 0.8, 3))
 
 expect_error(worldTransform(image) <- sheared, "shear")
 
+## The setters must preserve whatever image class they are given rather than
+## densifying as a side effect -- this is the regression case for a bug where
+## they reached for asDenseImage(), which does not understand sparse or
+## packed images and so refused them outright
+sparseImg <- asSparse(image)
+voxelSize(sparseImg) <- c(4, 4, 4)
+expect_true(isSparseImage(sparseImg))
+expect_equal(voxelSize(sparseImg), c(4, 4, 4))
+expect_equal(worldTransform(sparseImg)[1:3, 4], oblique[1:3, 4])
+
+worldTransform(sparseImg) <- las
+expect_true(isSparseImage(sparseImg))
+expect_equal(worldTransform(sparseImg), las)
+
+packedImg <- asPacked(image, "int16")
+voxelSize(packedImg) <- c(5, 5, 5)
+expect_true(isPackedImage(packedImg))
+expect_equal(voxelSize(packedImg), c(5, 5, 5))
+
+worldTransform(packedImg) <- las
+expect_true(isPackedImage(packedImg))
+expect_equal(worldTransform(packedImg), las)
+
 ## --- Coordinate conversion -------------------------------------------------
 
 image <- denseImage(array(0, c(91L, 109L, 91L)), voxelSize = c(2, 2, 2), worldTransform = las)

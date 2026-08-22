@@ -3,7 +3,6 @@
 export("voxelSize<-")
 export("worldTransform<-")
 export(asDense)
-export(asDenseImage)
 export(asPacked)
 export(asSparse)
 export(canFork)

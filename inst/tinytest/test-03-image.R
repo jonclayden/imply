@@ -155,8 +155,14 @@ expect_equal(dim(plain), dim(x))
 expect_equal(as.vector(plain), as.vector(x))
 
 ## asDenseImage leaves an image alone but promotes a plain array
-expect_identical(asDenseImage(x), x)
-expect_true(isDenseImage(asDenseImage(array(0, c(2, 2)))))
+expect_identical(asDense(x), x)
+expect_true(isDenseImage(asDense(array(0, c(2, 2)))))
+
+## asDenseImage() is the internal residual case asDense() falls back on for a
+## plain array or an already-dense image; it is not exported, since it does
+## not understand sparse or packed images the way asDense() does
+expect_identical(imply:::asDenseImage(x), x)
+expect_true(isDenseImage(imply:::asDenseImage(array(0, c(2, 2)))))
 
 ## --- Base R behaviour is inherited -----------------------------------------
 

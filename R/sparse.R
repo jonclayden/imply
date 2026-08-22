@@ -126,7 +126,9 @@ asSparse <- function (x, ...)
     if (isSparseImage(x))
         return(x)
 
-    image <- asDenseImage(x, ...)
+    ## asDense(), not asDenseImage(): x may be a packed image, which the
+    ## latter does not understand
+    image <- asDense(x, ...)
     packed <- denseToSparse(as.array(image), image@spatial)
 
     sparseImage(mask = packed$mask, values = packed$values, dim = dim(image),
@@ -139,7 +141,9 @@ asSparse <- function (x, ...)
 asDense <- function (x, ...)
 {
     ## Unpacks whichever of the compact representations it is given, so a
-    ## caller that just wants ordinary values need not ask which one it has
+    ## caller that just wants ordinary values need not ask which one it has.
+    ## This is the general "coerce to dense" verb; asDenseImage() is only the
+    ## residual case below, once packed and sparse have both been ruled out
     if (isPackedImage(x))
         return(denseImage(as.array(x), spatial = x@spatial, voxelSize = x@voxelSize,
                           worldTransform = worldTransform(x),

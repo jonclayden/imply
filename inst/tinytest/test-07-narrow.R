@@ -192,7 +192,22 @@ expect_true(isPackedImage(asPacked(f + 1, "float32")))
 expect_identical(asPacked(f, "float32"), f)
 expect_true(isPackedImage(asPacked(asSparse(image), "float32")))
 expect_equal(as.array(asPacked(asSparse(image), "float32")), values, tolerance = 1e-6)
-expect_true(isDenseImage(asDenseImage(as.array(f))))
+expect_true(isDenseImage(asDense(as.array(f))))
+
+## Repacking an already-packed image to a different type must not require
+## going via a dense intermediate that the caller has to unpack by hand:
+## this is the regression case for a bug where asPacked() reached for the
+## narrower asDenseImage(), which does not understand a packed image and so
+## refused it even though it is a fully materialisable data source
+i16 <- asPacked(image, "int16")
+repacked <- asPacked(i16, "float32")
+expect_true(isPackedImage(repacked))
+expect_equal(storageType(repacked), "float32")
+expect_equal(as.array(repacked), as.array(i16), tolerance = 1e-6)
+
+## The same bug affected asSparse() on a packed image directly
+expect_true(isSparseImage(asSparse(i16)))
+expect_equal(as.array(asSparse(i16)), as.array(i16), tolerance = 1e-6)
 
 ## --- Storage claim ---------------------------------------------------------
 

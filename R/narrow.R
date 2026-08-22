@@ -129,10 +129,10 @@ asPacked <- function (x, type = "float32", slope = NULL, intercept = NULL, ...)
 {
     if (isPackedImage(x) && identical(x@storageType, type))
         return(x)
-    if (isSparseImage(x))
-        x <- asDense(x)
 
-    image <- asDenseImage(x, ...)
+    ## asDense(), not asDenseImage(): x may already be a packed image, of a
+    ## different type, which the latter does not understand
+    image <- asDense(x, ...)
     values <- as.array(image)
 
     if (!typeof(values) %in% c("logical", "integer", "double"))

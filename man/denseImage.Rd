@@ -3,7 +3,6 @@
 \name{denseImage}
 \alias{denseImage}
 \alias{isDenseImage}
-\alias{asDenseImage}
 \title{Dense images}
 \usage{
 denseImage(
@@ -17,8 +16,6 @@ denseImage(
 )
 
 isDenseImage(x)
-
-asDenseImage(x, ...)
 }
 \arguments{
 \item{.data}{An array, or any atomic vector, which is treated as
@@ -38,9 +35,7 @@ dimensionality if that is smaller.}
 
 \item{template}{An image to take unspecified geometry from.}
 
-\item{x}{An image, or an object to coerce to one.}
-
-\item{...}{Further arguments to \code{denseImage()}.}
+\item{x}{An image.}
 }
 \description{
 A dense image is an array carrying image geometry alongside it. It is an S7
