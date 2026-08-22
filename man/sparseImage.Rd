@@ -36,7 +36,7 @@ mask(x)
 
 \item{values}{Packed values, in location order.}
 
-\item{dim, }{spatial, voxelSize, worldTransform, spaceUnit, timeUnit Image
+\item{dim, spatial, voxelSize, worldTransform, spaceUnit, timeUnit}{Image
 geometry, as for \code{\link[=denseImage]{denseImage()}}.}
 
 \item{template}{An image to take unspecified geometry from.}

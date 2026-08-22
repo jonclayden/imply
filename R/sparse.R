@@ -19,7 +19,7 @@
 #' @param ... Further arguments to `sparseImage()`.
 #' @param mask A raw vector of one bit per location, or a logical vector.
 #' @param values Packed values, in location order.
-#' @param dim, spatial, voxelSize, worldTransform, spaceUnit, timeUnit Image
+#' @param dim,spatial,voxelSize,worldTransform,spaceUnit,timeUnit Image
 #'   geometry, as for [denseImage()].
 #' @param template An image to take unspecified geometry from.
 #' @name sparseImage

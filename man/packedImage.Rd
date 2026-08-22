@@ -30,17 +30,17 @@ storageType(x)
 \arguments{
 \item{values}{A raw vector holding the packed values.}
 
-\item{dims, }{spatial, voxelSize, worldTransform, spaceUnit, timeUnit Image
+\item{dims, spatial, voxelSize, worldTransform, spaceUnit, timeUnit}{Image
 geometry, as for \code{\link[=denseImage]{denseImage()}}.}
 
-\item{slope, }{intercept Scaling applied to stored values. Chosen
+\item{slope, intercept}{Scaling applied to stored values. Chosen
 automatically when not given.}
 
 \item{template}{An image to take unspecified geometry from.}
 
 \item{x}{An image or array.}
 
-\item{type, }{storageType One of \code{"int8"}, \code{"uint8"}, \code{"int16"}, \code{"uint16"},
+\item{type, storageType}{One of \code{"int8"}, \code{"uint8"}, \code{"int16"}, \code{"uint16"},
 \code{"int32"} or \code{"float32"}.}
 
 \item{...}{Further arguments to \code{denseImage()}.}

@@ -34,7 +34,7 @@ assignment; see \link{geometry}.}
 than the value held at each location. Defaults to three, or the
 dimensionality if that is smaller.}
 
-\item{spaceUnit, }{timeUnit Units of measurement.}
+\item{spaceUnit, timeUnit}{Units of measurement.}
 
 \item{template}{An image to take unspecified geometry from.}
 

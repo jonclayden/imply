@@ -23,7 +23,7 @@
 #' @param spatial The number of leading dimensions that index location rather
 #'   than the value held at each location. Defaults to three, or the
 #'   dimensionality if that is smaller.
-#' @param spaceUnit, timeUnit Units of measurement.
+#' @param spaceUnit,timeUnit Units of measurement.
 #' @param template An image to take unspecified geometry from.
 #' @param x An image.
 #' @param ... Further arguments to `denseImage()`.

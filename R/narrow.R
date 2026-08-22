@@ -19,12 +19,12 @@
 #' payload that separates them does not survive the narrowing.
 #'
 #' @param x An image or array.
-#' @param type, storageType One of `"int8"`, `"uint8"`, `"int16"`, `"uint16"`,
+#' @param type,storageType One of `"int8"`, `"uint8"`, `"int16"`, `"uint16"`,
 #'   `"int32"` or `"float32"`.
-#' @param slope, intercept Scaling applied to stored values. Chosen
+#' @param slope,intercept Scaling applied to stored values. Chosen
 #'   automatically when not given.
 #' @param values A raw vector holding the packed values.
-#' @param dims, spatial, voxelSize, worldTransform, spaceUnit, timeUnit Image
+#' @param dims,spatial,voxelSize,worldTransform,spaceUnit,timeUnit Image
 #'   geometry, as for [denseImage()].
 #' @param template An image to take unspecified geometry from.
 #' @param ... Further arguments to `denseImage()`.
