@@ -59,7 +59,12 @@ voxelSize <- function (x) attr(x, "voxelSize") %||% rep(1, spatial(x))
 `voxelSize<-` <- function (x, value)
 {
     value <- as.double(value)
-    x <- asDenseImage(x)
+    ## Whatever kind of image x already is, that is preserved: a sparse or
+    ## packed image has its own voxelSize property, set in place, rather than
+    ## being densified as a side effect of what is meant to be a cheap
+    ## metadata assignment. Only a non-image (a plain array) is promoted
+    if (!isImage(x))
+        x <- denseImage(x)
     ## Orientation is untouched: this is the whole point of storing the two
     ## independently rather than folding voxel size into the transform
     x@voxelSize <- value
@@ -86,7 +91,9 @@ worldTransform <- function (x)
 #' @export
 `worldTransform<-` <- function (x, value)
 {
-    x <- asDenseImage(x)
+    ## As for voxelSize<-: preserve whatever image class x already is
+    if (!isImage(x))
+        x <- denseImage(x)
     decomposed <- decomposeTransform(validateXform(value), x@spatial)
     x@orientation <- decomposed$orientation
     x@voxelSize <- decomposed$voxelSize
