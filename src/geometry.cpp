@@ -22,17 +22,6 @@ Affine affineFrom (const Rcpp::NumericMatrix &m)
     return result;
 }
 
-Rcpp::NumericMatrix affineTo (const Affine &a)
-{
-    Rcpp::NumericMatrix result(4, 4);
-    for (int i=0; i<4; i++)
-    {
-        for (int j=0; j<4; j++)
-            result(i,j) = a(i,j);
-    }
-    return result;
-}
-
 PointType parsePointType (const std::string &name)
 {
     if (name == "voxel") return PointType::voxel;
@@ -75,12 +64,6 @@ Rcpp::NumericMatrix convertPoints (const Rcpp::NumericMatrix &locs, const ImageS
 }
 
 } // anonymous namespace
-
-// [[Rcpp::export]]
-Rcpp::NumericMatrix invertXform (Rcpp::NumericMatrix xform)
-{
-    return affineTo(affineFrom(xform).inverse());
-}
 
 // [[Rcpp::export]]
 Rcpp::NumericMatrix pointsToVoxel (Rcpp::NumericMatrix locs, Rcpp::NumericMatrix xform,

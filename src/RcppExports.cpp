@@ -75,17 +75,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// invertXform
-Rcpp::NumericMatrix invertXform(Rcpp::NumericMatrix xform);
-RcppExport SEXP _imply_invertXform(SEXP xformSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type xform(xformSEXP);
-    rcpp_result_gen = Rcpp::wrap(invertXform(xform));
-    return rcpp_result_gen;
-END_RCPP
-}
 // pointsToVoxel
 Rcpp::NumericMatrix pointsToVoxel(Rcpp::NumericMatrix locs, Rcpp::NumericMatrix xform, Rcpp::NumericVector pixdim, std::string type);
 RcppExport SEXP _imply_pointsToVoxel(SEXP locsSEXP, SEXP xformSEXP, SEXP pixdimSEXP, SEXP typeSEXP) {
@@ -505,7 +494,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_imply_applyOverMargin", (DL_FUNC) &_imply_applyOverMargin, 9},
     {"_imply_applyOverMarginPacked", (DL_FUNC) &_imply_applyOverMarginPacked, 13},
     {"_imply_applyOverMarginSparse", (DL_FUNC) &_imply_applyOverMarginSparse, 12},
-    {"_imply_invertXform", (DL_FUNC) &_imply_invertXform, 1},
     {"_imply_pointsToVoxel", (DL_FUNC) &_imply_pointsToVoxel, 4},
     {"_imply_pointsFromVoxel", (DL_FUNC) &_imply_pointsFromVoxel, 4},
     {"_imply_roundPoints", (DL_FUNC) &_imply_roundPoints, 3},

@@ -13,10 +13,6 @@ applyOverMarginSparse <- function(mask, values, dim, spatial, margin, fun, callN
     .Call(`_imply_applyOverMarginSparse`, mask, values, dim, spatial, margin, fun, callNames, simplify, from, to, progress, reportEvery)
 }
 
-invertXform <- function(xform) {
-    .Call(`_imply_invertXform`, xform)
-}
-
 pointsToVoxel <- function(locs, xform, pixdim, type = "world") {
     .Call(`_imply_pointsToVoxel`, locs, xform, pixdim, type)
 }

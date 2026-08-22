@@ -49,7 +49,7 @@ They are unified in C++ by a shared accessor interface (`DenseAccessor`, `Sparse
 
 Key pieces:
 
-- **`Raster<D>`** (`inst/include/imply/Raster.h`) — an index space with *general strides*, split at a runtime `spatial` index into leading spatial dimensions and trailing value dimensions. `DynamicRaster` and `FixedRaster<D>` come from one template. Note that the apply and reduce engines do **not** currently use it: they compute strides inline and walk with `OffsetWalker`. `Raster` is reachable only from the unexported probe functions in `src/main.cpp` and from the public header API.
+- **`Raster<D>`** (`inst/include/imply/Raster.h`) — an index space with *general strides*, split at a runtime `spatial` index into leading spatial dimensions and trailing value dimensions. `DynamicRaster` and `FixedRaster<D>` come from one template. Note that the apply and reduce engines do **not** currently use it: they compute strides inline and walk with `OffsetWalker`. `Raster` is reachable only from the unexported probe functions in `src/raster.cpp` and from the public header API.
 - **`OffsetWalker`** (`Blocks.h`) — odometer traversal of an arbitrary subset of dimensions, yielding memory offsets incrementally with no allocation. This is what lets a sub-array be gathered without permuting the whole image, which is where the 2x memory saving over `base::apply` comes from.
 - **`ImageSpace`** (`Space.h`) — voxel-to-world geometry. Header-only, no file-format dependency.
 - **`parallelFor`** (`Parallel.h`) — libdispatch, OpenMP or serial, dividing work into a fixed number of *chunks* so a requested thread count is meaningful on both backends.
