@@ -27,11 +27,21 @@
 #' rather than to describe voxel storage geometry, which is a different kind
 #' of information than this package models.
 #'
+#' `toVoxel()` and `fromVoxel()` use one-based voxel coordinates, matching
+#' `x[i, j, k]` indexing, so that a location can be looked up and converted
+#' with the same numbers rather than an offset one having to be kept in mind
+#' between them. The affine itself, and the rest of the package's C++ API, is
+#' zero-based throughout, as NIfTI and MRtrix both are; the shift is applied
+#' only at this R-facing boundary.
+#'
 #' @param x An image, or for `worldTransform` either an image or a 4x4 matrix.
 #' @param value A replacement value.
-#' @param points A matrix of points, one per row and three columns.
-#' @param type The coordinate convention of `points`: `"voxel"`, `"scaled"`
-#'   (millimetres, ignoring rotation) or `"world"` (fully transformed).
+#' @param points A matrix of points, one per row and three columns. Where
+#'   `type` is `"voxel"` (the default convention for `fromVoxel()`'s input and
+#'   `toVoxel()`'s output), these are one-based, as for `x[i, j, k]`.
+#' @param type The coordinate convention of `points`: `"voxel"` (one-based),
+#'   `"scaled"` (millimetres from the one-based origin, ignoring rotation) or
+#'   `"world"` (fully transformed).
 #' @param round Rounding strategy: `"none"`, `"conventional"` for nearest
 #'   neighbour, or `"probabilistic"` for a stochastic nearest neighbour with
 #'   probability proportional to proximity.
@@ -183,13 +193,27 @@ toVoxel <- function (points, x, type = "world", round = "none", bounds = NULL)
             bounds <- as.double(dim(x)[seq_len(min(3L, spatial(x)))])
         result <- roundPoints(result, round, bounds)
     }
+    ## The affine and the rounding above both work in zero-based voxel space,
+    ## as NIfTI and the compiled side do; the result is shifted to one-based
+    ## only here, so it lines up with x[i,j,k] indexing. A "voxel" input is
+    ## already in that one-based convention, so it passes straight through
+    if (!identical(type, "voxel"))
+        result <- result + 1
     result
 }
 
 #' @rdname geometry
 #' @export
 fromVoxel <- function (points, x, type = "world")
-    pointsFromVoxel(asPointMatrix(points), worldTransform(x), voxelSize(x), type)
+{
+    points <- asPointMatrix(points)
+    ## The inverse of toVoxel()'s shift: points arrive one-based and are
+    ## brought back to zero-based before reaching the affine, unless they are
+    ## staying in voxel space, in which case there is nothing to shift
+    if (!identical(type, "voxel"))
+        points <- points - 1
+    pointsFromVoxel(points, worldTransform(x), voxelSize(x), type)
+}
 
 asPointMatrix <- function (points)
 {

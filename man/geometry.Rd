@@ -33,10 +33,13 @@ fromVoxel(points, x, type = "world")
 
 \item{value}{A replacement value.}
 
-\item{points}{A matrix of points, one per row and three columns.}
+\item{points}{A matrix of points, one per row and three columns. Where
+\code{type} is \code{"voxel"} (the default convention for \code{fromVoxel()}'s input and
+\code{toVoxel()}'s output), these are one-based, as for \code{x[i, j, k]}.}
 
-\item{type}{The coordinate convention of \code{points}: \code{"voxel"}, \code{"scaled"}
-(millimetres, ignoring rotation) or \code{"world"} (fully transformed).}
+\item{type}{The coordinate convention of \code{points}: \code{"voxel"} (one-based),
+\code{"scaled"} (millimetres from the one-based origin, ignoring rotation) or
+\code{"world"} (fully transformed).}
 
 \item{round}{Rounding strategy: \code{"none"}, \code{"conventional"} for nearest
 neighbour, or \code{"probabilistic"} for a stochastic nearest neighbour with
@@ -73,4 +76,11 @@ shear) is rejected rather than silently mangled. In practice a sheared
 registration or normalisation result (to Talairach or MNI space, say)
 rather than to describe voxel storage geometry, which is a different kind
 of information than this package models.
+
+\code{toVoxel()} and \code{fromVoxel()} use one-based voxel coordinates, matching
+\code{x[i, j, k]} indexing, so that a location can be looked up and converted
+with the same numbers rather than an offset one having to be kept in mind
+between them. The affine itself, and the rest of the package's C++ API, is
+zero-based throughout, as NIfTI and MRtrix both are; the shift is applied
+only at this R-facing boundary.
 }

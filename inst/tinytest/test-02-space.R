@@ -95,19 +95,28 @@ expect_equal(worldTransform(packedImg), las)
 
 image <- denseImage(array(0, c(91L, 109L, 91L)), voxelSize = c(2, 2, 2), worldTransform = las)
 
+## toVoxel()/fromVoxel() use one-based voxel coordinates, matching x[i,j,k],
+## even though the affine itself is zero-based throughout. The first voxel
+## therefore sits exactly at the affine's own translation, with no offset
+## left for the caller to apply by hand
+expect_equal(as.vector(fromVoxel(c(1, 1, 1), image)), las[1:3, 4])
+expect_equal(as.vector(toVoxel(las[1:3, 4], image)), c(1, 1, 1))
+
 ## Converting a world point to voxel coordinates must invert the transform.
 ## The implementation this was ported from applied the forward transform here,
-## so a round trip is the regression test for that bug
+## so a round trip is the regression test for that bug. The affine is applied
+## to the zero-based equivalent of the one-based input
 voxel <- c(10, 20, 30)
 world <- fromVoxel(voxel, image)
-expect_equal(as.vector(world), as.vector(las %*% c(voxel, 1))[1:3])
+expect_equal(as.vector(world), as.vector(las %*% c(voxel - 1, 1))[1:3])
 expect_equal(as.vector(toVoxel(world, image)), voxel)
 
 ## Explicitly: the reverse conversion is not the forward transform
 expect_false(isTRUE(all.equal(as.vector(toVoxel(world, image)),
                               as.vector(las %*% c(world, 1))[1:3])))
 
-## Round trip over many points, including the oblique case
+## Round trip over many points, including the oblique case. This holds
+## regardless of the one-based shift, since it cancels out in a round trip
 set.seed(7)
 points <- matrix(runif(300, 0, 80), ncol = 3)
 expect_equal(toVoxel(fromVoxel(points, image), image), points)
@@ -115,11 +124,13 @@ expect_equal(toVoxel(fromVoxel(points, image), image), points)
 obliqueImage <- denseImage(array(0, c(10L, 10L, 10L)), voxelSize = c(1.2, 0.8, 3), worldTransform = oblique)
 expect_equal(toVoxel(fromVoxel(points, obliqueImage), obliqueImage), points)
 
-## Scaled coordinates apply the voxel dimensions but ignore rotation
-expect_equal(as.vector(fromVoxel(c(1, 1, 1), image, type = "scaled")), c(2, 2, 2))
-expect_equal(as.vector(toVoxel(c(2, 2, 2), image, type = "scaled")), c(1, 1, 1))
+## Scaled coordinates apply the voxel dimensions but ignore rotation. The
+## one-based voxel (3,3,3) is two steps on from the origin voxel (1,1,1), so
+## it sits at 2 * voxelSize
+expect_equal(as.vector(fromVoxel(c(3, 3, 3), image, type = "scaled")), c(4, 4, 4))
+expect_equal(as.vector(toVoxel(c(4, 4, 4), image, type = "scaled")), c(3, 3, 3))
 
-## Voxel coordinates pass through untouched
+## Voxel coordinates pass through untouched -- already one-based on both sides
 expect_equal(as.vector(fromVoxel(c(3, 4, 5), image, type = "voxel")), c(3, 4, 5))
 
 expect_error(fromVoxel(matrix(1:8, ncol = 4), image), "three columns")

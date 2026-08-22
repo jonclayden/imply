@@ -87,16 +87,18 @@ worldTransform(image)
 Voxel size and world placement are stored, and can be set, independently
 of one another, so replacing one never has to touch the other — see
 `?geometry`. `fromVoxel()` and `toVoxel()` convert points between voxel
-and world space using the composed transform, in the zero-based voxel
-coordinates it uses (as opposed to R’s one-based array indexing):
+and world space using the composed transform, in the same one-based
+voxel coordinates as `image[i, j, k]` — the first voxel is `c(1, 1, 1)`,
+not `c(0, 0, 0)`, so a location can be looked up and converted without
+an offset to keep track of:
 
 ``` r
-toVoxel(c(0, 0, 0), image)
-#>      [,1] [,2] [,3]
-#> [1,]    0    0    0
 fromVoxel(c(1, 1, 1), image)
 #>      [,1] [,2] [,3]
-#> [1,]    2    2  2.5
+#> [1,]    0    0    0
+toVoxel(fromVoxel(c(1, 1, 1), image), image)
+#>      [,1] [,2] [,3]
+#> [1,]    1    1    1
 ```
 
 Because a `denseImage` is a plain array underneath, ordinary R
