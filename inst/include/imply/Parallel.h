@@ -26,22 +26,10 @@ namespace imply {
 // macOS is the practical choice, since the system compiler rejects -fopenmp),
 // OpenMP otherwise, and a plain loop when neither is present.
 //
-// Two departures from the equivalent shim in mmand:
-//
-//  * The work is expressed as a template taking a range, not as macros around
-//    a loop body. mmand has to use macros because dispatch_apply() takes a
-//    block, which is a language extension rather than a C++ construct;
-//    dispatch_apply_f() takes an ordinary function pointer and a context, so
-//    a capture-less lambda serves as the trampoline and no -fblocks support
-//    or Blocks runtime is needed. That also removes the PARALLEL_LOOP_CONTINUE
-//    leak, where `continue` had to become `return` depending on the backend.
-//
-//  * Work is divided into a fixed number of chunks, and the backend iterates
-//    over chunks rather than over raw items. This is what makes a requested
-//    thread count mean something under libdispatch, which offers no width
-//    control of its own: with only n chunks to run, no more than n can be in
-//    flight. In mmand the equivalent option is silently ignored whenever the
-//    libdispatch path is taken.
+// Work is divided into a fixed number of chunks, and the backend iterates over
+// chunks rather than over raw items. This is what makes a requested thread
+// count mean something under libdispatch, which offers no width control of its
+// own: with only n chunks to run, no more than n can be in flight.
 //
 // NOTHING passed to parallelFor may touch the R API, allocate R objects, or
 // draw from R's global RNG, none of which are thread-safe.

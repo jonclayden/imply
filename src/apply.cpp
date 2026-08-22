@@ -22,12 +22,11 @@ namespace {
 const R_xlen_t interruptInterval = 100;
 
 
-// Apply an R function over the margins of an array.
+// Apply an R function over the margins of an array
 //
-// Unlike base::apply(), which permutes the whole array into a fresh copy
-// before looping, each sub-array is gathered directly through the stride
-// vector. Peak memory is therefore the input plus the result, rather than
-// twice the input plus the result.
+// Rather than permuting the whole array into a fresh copy before looping, each
+// sub-array is gathered directly through the stride vector. Peak memory is
+// therefore the input plus the result
 template <typename Accessor, typename Tag>
 Rcpp::List applyImpl (const Accessor &source,
                       const std::vector<Extent> &dims, const std::vector<int> &margin,
@@ -127,12 +126,8 @@ Rcpp::List applyImpl (const Accessor &source,
         SETCADR(call, sub);
 
         // Rcpp_fast_eval, not Rf_eval, because R may jump out of the applied
-        // function: an error, an interrupt, a return() from an enclosing
-        // frame, or a restart being invoked. A bare Rf_eval() would longjmp
-        // straight past every C++ frame below, leaking the sinks, walkers and
-        // buffers. R_UnwindProtect catches the jump and turns it into a C++
-        // exception so the stack unwinds properly; END_RCPP then resumes the
-        // original jump, so the condition still reaches R as whatever it was
+        // function due to an error, an interrupt, a return() from an enclosing
+        // frame, or a restart being invoked
         Rcpp::RObject value = Rcpp::Rcpp_fast_eval(call, R_GlobalEnv);
 
         if (general == nullptr && fast == nullptr)

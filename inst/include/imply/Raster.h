@@ -30,7 +30,7 @@ struct Block
 
 namespace internal {
 
-// Compile-time unrolled index flattening, salvaged from tractor.track's Image.h.
+// Compile-time unrolled index flattening, drawn from tractor.track's Image.h.
 // The recursion is on N, the number of dimensions still to fold in.
 //
 // NB: unlike the original, the base case multiplies by strides[0] rather than
@@ -67,8 +67,8 @@ template <> struct ExtentContainer<dynamic> { typedef std::vector<Extent> Type; 
 //
 // The dimension vector is split at `spatial`: leading dimensions index
 // location, trailing dimensions index the value held at each location (a time
-// series, vector or tensor). All indexing goes through the stride vector, so a
-// permuted or sliced view is a stride permutation rather than a copy.
+// series, vector, tensor, etc.). All indexing goes through the stride vector,
+// so a permuted or sliced view is a stride permutation rather than a copy
 template <int D = dynamic>
 class Raster
 {

@@ -133,9 +133,9 @@ public:
     Point fromVoxel (const Point &p, const PointType type) const;
 };
 
-// Rounding is kept separate from coordinate conversion, which the original
-// conflated. Bounds are optional and only consulted by the probabilistic
-// strategy, to avoid selecting a location off the end of the image.
+// Rounding is kept separate from coordinate conversion. Bounds are optional
+// and only consulted by the probabilistic strategy, to avoid selecting a
+// location off the end of the image
 //
 // The generator is passed in rather than being global, so this is safe to call
 // from a worker thread provided each thread owns its generator. It is only
@@ -249,9 +249,7 @@ inline Point roundLocation (const Point &p, const RoundingType round, const std:
         break;
 
         // nearbyint rather than round, so that a coordinate falling exactly
-        // halfway breaks to even, matching R's round(). The code this was
-        // ported from used std::round, which breaks away from zero and so
-        // disagrees with R on values like 4.5
+        // halfway breaks to even, matching R's round()
         case RoundingType::conventional:
         for (int i=0; i<3; i++)
             result[i] = std::nearbyint(p[i]);

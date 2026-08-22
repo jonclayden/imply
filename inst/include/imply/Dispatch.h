@@ -12,10 +12,7 @@
 namespace imply {
 
 // Dispatch happens exactly once, at the R boundary, so that everything inside
-// is fully typed and free of per-element branching or virtual calls. This is
-// the deliberate departure from RNifti's NiftiImageData, whose proxy iterator
-// costs an indirect call per element — fine for conversion, too expensive for
-// a hot loop.
+// is fully typed and free of per-element branching or virtual calls
 
 // Call fn with the type tag matching x's storage mode. fn is a generic lambda
 // taking (Tag, Tag::Type *)

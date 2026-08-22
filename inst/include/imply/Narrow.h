@@ -13,7 +13,7 @@
 
 namespace imply {
 
-// R has no single-precision type, so a large image pays twice the memory it
+// R has no single-precision type, so a large image may pay twice the memory it
 // needs and, since these passes are bandwidth-bound, roughly twice the time.
 // Raw MRI is commonly 16-bit, which is four times narrower than double.
 //

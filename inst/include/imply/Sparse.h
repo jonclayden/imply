@@ -27,8 +27,8 @@ inline int popcount64 (std::uint64_t x)
 }
 
 // The mask lives in an R raw vector, whose data is not guaranteed to be
-// aligned for a 64-bit read, so words are copied out rather than cast. Every
-// compiler worth the name turns this into a single load
+// aligned for a 64-bit read, so words are copied out rather than cast. The
+// compiler should turn this into a single load
 inline std::uint64_t wordAt (const Rbyte *bytes, const std::size_t word)
 {
     std::uint64_t value;
@@ -38,17 +38,15 @@ inline std::uint64_t wordAt (const Rbyte *bytes, const std::size_t word)
 
 } // namespace internal
 
-// Which spatial locations of an image hold data, as one bit each.
+// Which spatial locations of an image hold data, as one bit each
 //
 // Sparsity is over locations, not over individual values: a location is either
 // present, in which case the whole vector of values held there is stored, or
-// absent, in which case every one of them is implicitly zero. That is what a
-// brain mask actually is, and it means the packed values stay contiguous.
+// absent, in which case every one of them is implicitly zero. The packed
+// values therefore stay contiguous
 //
 // Locating a value is O(1), via a prefix count of the bits set in every
-// preceding word. tractor.base's SparseArray instead matches against a
-// recomputed vector of linear indices, which is O(nnz) for every single index
-// operation.
+// preceding word, rather than needing a search
 class LocationMask
 {
 protected:

@@ -29,8 +29,8 @@ struct LogicalTag
     static constexpr int sexpType = LGLSXP;
     static bool isNA (const Type x) { return x == NA_LOGICAL; }
     static Type na () { return NA_LOGICAL; }
-    // NA is deliberately not zero, so a location holding one is kept when
-    // an image is packed rather than being folded away
+    // NA is not zero, so a location holding one is kept when an image is
+    // packed, rather than being folded away
     static bool isZero (const Type x) { return x == 0; }
 };
 
@@ -41,8 +41,6 @@ struct IntegerTag
     static constexpr int sexpType = INTSXP;
     static bool isNA (const Type x) { return x == NA_INTEGER; }
     static Type na () { return NA_INTEGER; }
-    // NA is deliberately not zero, so a location holding one is kept when
-    // an image is packed rather than being folded away
     static bool isZero (const Type x) { return x == 0; }
 };
 
@@ -53,8 +51,6 @@ struct RealTag
     static constexpr int sexpType = REALSXP;
     static bool isNA (const Type x) { return ISNAN(x); }
     static Type na () { return NA_REAL; }
-    // NA is deliberately not zero, so a location holding one is kept when
-    // an image is packed rather than being folded away
     static bool isZero (const Type x) { return x == 0.0; }
 };
 
