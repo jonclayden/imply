@@ -174,7 +174,7 @@ S7::method(print, denseImage) <- function (x, ...)
     {
         cat(sprintf("  Spatial dimensions : %s\n", paste(dims[seq_len(nSpatial)], collapse = " x ")))
         cat(sprintf("  Voxel size         : %s %s\n",
-                    paste(signif(x@voxelSize, 4), collapse = " x "), x@spaceUnit))
+                    paste(signif(x@voxelSize, 4), collapse = " x "), ifelse(x@spaceUnit=="unknown", "(unit unknown)", x@spaceUnit)))
     }
     if (nSpatial < length(dims))
         cat(sprintf("  Values per location: %d\n", prod(dims[-seq_len(nSpatial)])))

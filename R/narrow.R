@@ -178,7 +178,7 @@ S7::method(print, packedImage) <- function (x, ...)
     {
         cat(sprintf("  Spatial dimensions : %s\n", paste(x@dims[seq_len(x@spatial)], collapse = " x ")))
         cat(sprintf("  Voxel size         : %s %s\n",
-                    paste(signif(x@voxelSize, 4), collapse = " x "), x@spaceUnit))
+                    paste(signif(x@voxelSize, 4), collapse = " x "), ifelse(x@spaceUnit=="unknown", "(unit unknown)", x@spaceUnit)))
     }
     if (x@spatial < length(x@dims))
         cat(sprintf("  Values per location: %d\n", prod(x@dims[-seq_len(x@spatial)])))
