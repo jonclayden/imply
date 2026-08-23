@@ -14,7 +14,8 @@ canFork()
 resolveThreads(threads = NULL)
 }
 \arguments{
-\item{threads}{A thread count, or \code{NULL} to consult \code{getOption("imply.threads")}.}
+\item{threads}{A thread count, or \code{NULL} to consult \code{getOption("imply.threads")}.
+Leaving both unset runs serially.}
 }
 \value{
 \code{parallelBackend()} returns \code{"libdispatch"}, \code{"openmp"} or \code{"none"}.
@@ -37,6 +38,6 @@ such work runs serially; the alternative, a socket cluster, would copy the
 whole image to every worker and so defeat the purpose.
 
 The number of threads may be given per call, or set globally with
-\code{options(imply.threads = n)}. Leaving it unset lets compiled kernels use the
-backend's own default while R functions run serially.
+\code{options(imply.threads = n)}. Leaving both unset means serial, for compiled
+kernels and R functions alike. Multi-core use is opt-in.
 }

@@ -56,7 +56,7 @@ sliceApply(
 
 \item{progress}{\code{FALSE} for none, \code{TRUE} for a text progress bar showing
 the percentage complete and the rate in voxels per second, or a function
-of \verb{(done, total)}. See \link{progress}.}
+of \verb{(done, total)}.}
 
 \item{mask}{For \code{voxelApply()}, a logical array over the spatial dimensions,
 a sparse image whose mask is to be used, or \code{NULL} for none. Locations
