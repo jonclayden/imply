@@ -60,8 +60,12 @@ for (a in arrays)
                 reference <- suppressWarnings(tryCatch(
                     apply(a, margin, functions[[name]], simplify = simplify),
                     error = function (e) paste("error:", conditionMessage(e))))
+                ## threads = 1L: this loop's whole point is an exact-match
+                ## comparison against base::apply(), including error text.
+                ## Whether dividing the work changes nothing is a separate
+                ## question, already covered by test-05-parallel.R
                 result <- suppressWarnings(tryCatch(
-                    imapply(a, margin, functions[[name]], simplify = simplify),
+                    imapply(a, margin, functions[[name]], simplify = simplify, threads = 1L),
                     error = function (e) paste("error:", conditionMessage(e))))
 
                 expect_identical(result, reference, info = label)

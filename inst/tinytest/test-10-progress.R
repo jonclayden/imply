@@ -240,46 +240,56 @@ expect_equal(as.vector(imreduce(small, 3, "sum")), as.vector(apply(small, 3, sum
 
 jumpy <- array(rnorm(5L * 5L * 200L), c(5L, 5L, 200L))
 
+## These all exercise R_UnwindProtect in the in-process call, not the forked
+## path -- a forked worker cannot unwind its parent's stack, and a condition
+## it raises reaches the parent only via mclapply's own try-error plumbing,
+## which is a different mechanism with different guarantees. threads = 1L
+## pins these to the code path the comment above is actually about, so a
+## higher ambient default (e.g. options(imply.threads)) can't silently swap
+## in the other one
+
 ## An error keeps its message and class, and stops where it was raised
 calls <- 0L
 outcome <- tryCatch(imapply(jumpy, 3, function (v) {
                         calls <<- calls + 1L
                         if (calls == 40L) stop("deliberate")
                         sum(v)
-                    }), error = function (e) conditionMessage(e))
+                    }, threads = 1L), error = function (e) conditionMessage(e))
 expect_identical(outcome, "deliberate")
 expect_equal(calls, 40L)
 
 ## A condition class survives too, rather than being flattened to a plain error
 outcome <- tryCatch(imapply(jumpy, 3, function (v) stop(structure(
                         class = c("myError", "error", "condition"),
-                        list(message = "tagged", call = NULL)))),
+                        list(message = "tagged", call = NULL))), threads = 1L),
                     myError = function (e) "caught as myError")
 expect_identical(outcome, "caught as myError")
 
 ## A restart invoked from inside the loop unwinds and runs its handler. This
 ## is the case a plain error test would not cover, since it is not an error
 outcome <- withRestarts(
-    { imapply(jumpy, 3, function (v) invokeRestart("bail", "restarted")); "no restart" },
+    { imapply(jumpy, 3, function (v) invokeRestart("bail", "restarted"), threads = 1L); "no restart" },
     bail = function (msg) msg)
 expect_identical(outcome, "restarted")
 
 ## A warning is not a jump, so the loop carries on and still returns
-expect_equal(suppressWarnings(imapply(jumpy, 3, function (v) { warning("noted"); sum(v) })),
+expect_equal(suppressWarnings(imapply(jumpy, 3, function (v) { warning("noted"); sum(v) }, threads = 1L)),
              apply(jumpy, 3, sum))
 
 ## The session is unharmed by any of that, and results are unchanged
 expect_identical(imapply(jumpy, 3, function (v) sum(v)), apply(jumpy, 3, sum))
 
 ## The same holds when a progress reporter is in play, since it is evaluated
-## through the same guard
+## through the same guard. Forced serial for the same reason as above: a
+## forked worker's error is re-raised by combineParts() with a wrapped
+## message, not the original condition
 outcome <- tryCatch(imapply(jumpy, 3, function (v) stop("during progress"),
-                            progress = function (done, total) NULL),
+                            progress = function (done, total) NULL, threads = 1L),
                     error = function (e) conditionMessage(e))
 expect_identical(outcome, "during progress")
 
 ## ...and when the reporter itself is what fails
 outcome <- tryCatch(imapply(jumpy, 3, function (v) sum(v),
-                            progress = function (done, total) stop("reporter failed")),
+                            progress = function (done, total) stop("reporter failed"), threads = 1L),
                     error = function (e) conditionMessage(e))
 expect_identical(outcome, "reporter failed")

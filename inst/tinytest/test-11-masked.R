@@ -45,16 +45,19 @@ expect_error(maskedMatrix(image), "Only a sparse image")
 
 ## --- Mask-aware voxelApply -------------------------------------------------
 
-## The point of the mask: locations outside it are not visited at all
+## The point of the mask: locations outside it are not visited at all. Forced
+## serial (threads = 1L) because the counter is a side effect: under forked
+## parallelism the increments happen in worker processes and never reach this
+## one
 calls <- 0L
-invisible(voxelApply(image, function (v) { calls <<- calls + 1L; 0 }, mask = brain))
+invisible(voxelApply(image, function (v) { calls <<- calls + 1L; 0 }, mask = brain, threads = 1L))
 expect_equal(calls, selected)
 expect_true(calls < prod(spatialDims))
 
 ## Without a mask every location is visited, which is what makes the mask worth
 ## having rather than relying on the image being sparse
 calls <- 0L
-invisible(voxelApply(packed, function (v) { calls <<- calls + 1L; 0 }))
+invisible(voxelApply(packed, function (v) { calls <<- calls + 1L; 0 }, threads = 1L))
 expect_equal(calls, prod(spatialDims))
 
 ## Answers inside the mask match the unmasked ones, and outside is fill

@@ -11,7 +11,13 @@ flattenIndices <- imply:::flattenIndices
 expandIndices <- imply:::expandIndices
 lineSums <- imply:::lineSums
 blockPartition <- imply:::blockPartition
-permuteView <- imply:::permuteView
+
+## permuteView() is a raw probe: its C++ default of threads = 0L lets the
+## compiled loop use as many as the backend sees fit, unlike imapply()/
+## imreduce(), which route through resolveThreads() and so obey
+## options(imply.threads). Capping it here keeps every call in this file
+## within what CRAN permits during checks
+permuteView <- function (...) imply:::permuteView(..., threads = 2L)
 
 dims <- c(4L, 5L, 3L, 2L)
 x <- array(as.double(seq_len(prod(dims))), dims)
