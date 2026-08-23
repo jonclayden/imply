@@ -38,7 +38,7 @@
 #'   `getOption("imply.threads")`. See [parallelism].
 #' @param progress `FALSE` for none, `TRUE` for a text progress bar showing
 #'   the percentage complete and the rate in voxels per second, or a function
-#'   of `(done, total)`. See [progress].
+#'   of `(done, total)`.
 #' @param axis For `lineApply()`, the axis lines run along; for `sliceApply()`,
 #'   the axis slices cut across.
 #' @param mask For `voxelApply()`, a logical array over the spatial dimensions,
