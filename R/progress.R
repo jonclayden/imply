@@ -1,31 +1,23 @@
-#' Progress reporting
-#'
-#' The apply verbs are most useful when each call takes long enough to be
-#' worth the machinery, which is exactly when it is worth knowing how far
-#' through the operation is. Passing `progress = TRUE` draws a text bar;
-#' passing a function of `(done, total)` reports however you like.
-#'
-#' Besides the percentage complete, the bar shows throughput in voxels per
-#' second. Voxels are used rather than calls because they are comparable
-#' across the verbs: a call is one location for [voxelApply()] but a whole
-#' plane for [sliceApply()], whereas both sweep the same number of voxels. The
-#' figure is a running average over the operation so far, rather than an
-#' instantaneous rate that would flicker from one update to the next. A
-#' function reporter is still given calls, since that is the unit its total is
-#' in, and is free to convert.
-#'
-#' Under forked parallelism the work is divided into batches, and the bar
-#' advances as each batch completes rather than as each call does. A worker
-#' cannot report on its own behalf: it is a separate process, and several of
-#' them writing to one console would interleave. The batching costs one extra
-#' fork per batch, which should be negligible against work slow enough to
-#' warrant a progress bar in the first place.
-#'
-#' @param progress `FALSE` for none, `TRUE` for a text bar, or a function
-#'   called with the number of calls completed and the total.
-#' @param total The number of calls that will be made.
-#' @name progress
-NULL
+## The apply verbs are most useful when each call takes long enough to be
+## worth the machinery, which is exactly when it is worth knowing how far
+## through the operation is. Passing progress = TRUE draws a text bar;
+## passing a function of (done, total) reports however you like.
+##
+## Besides the percentage complete, the bar shows throughput in voxels per
+## second. Voxels are used rather than calls because they are comparable
+## across the verbs: a call is one location for voxelApply() but a whole
+## plane for sliceApply(), whereas both sweep the same number of voxels. The
+## figure is a running average over the operation so far, rather than an
+## instantaneous rate that would flicker from one update to the next. A
+## function reporter is still given calls, since that is the unit its total is
+## in, and is free to convert.
+##
+## Under forked parallelism the work is divided into batches, and the bar
+## advances as each batch completes rather than as each call does. A worker
+## cannot report on its own behalf: it is a separate process, and several of
+## them writing to one console would interleave. The batching costs one extra
+## fork per batch, which should be negligible against work slow enough to
+## warrant a progress bar in the first place.
 
 ## Returns NULL, or a pair of closures: one to report a count, one to tidy up.
 ## A function reporter is told about calls, since that is the unit it was
