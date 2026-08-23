@@ -209,6 +209,13 @@ public:
         Extent remainder = n;
         for (int i=0; i<nDims(); i++)
         {
+            // A zero-extent dimension has nothing to divide by; see the same
+            // guard in OffsetWalker::seek() (Blocks.h)
+            if (dims_[i] == 0)
+            {
+                result[i] = 0;
+                continue;
+            }
             result[i] = remainder % dims_[i];
             remainder /= dims_[i];
         }
@@ -251,6 +258,9 @@ public:
         Extent remainder = e;
         for (int i=spatial_; i<n; i++)
         {
+            // Zero-extent dimension: nothing to divide by, see seek() in Blocks.h
+            if (dims_[i] == 0)
+                continue;
             result += static_cast<Offset>((remainder % dims_[i]) * strides_[i]);
             remainder /= dims_[i];
         }
@@ -264,6 +274,9 @@ public:
         Extent remainder = n;
         for (int i=0; i<spatial_; i++)
         {
+            // Zero-extent dimension: nothing to divide by, see seek() in Blocks.h
+            if (dims_[i] == 0)
+                continue;
             result += static_cast<Offset>((remainder % dims_[i]) * strides_[i]);
             remainder /= dims_[i];
         }
@@ -291,6 +304,9 @@ public:
         for (int i=0; i<nDims(); i++)
         {
             if (i == dim)
+                continue;
+            // Zero-extent dimension: nothing to divide by, see seek() in Blocks.h
+            if (dims_[i] == 0)
                 continue;
             // The usual stride doesn't apply because one dimension is skipped
             result += static_cast<Offset>((remainder % dims_[i]) * strides_[i]);

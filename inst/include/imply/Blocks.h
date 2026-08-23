@@ -51,6 +51,17 @@ public:
         Extent remainder = position;
         for (std::size_t i=0; i<dims_.size(); i++)
         {
+            // A zero-extent dimension (an empty margin or sub-array, as
+            // base::apply() must still handle) has nothing to divide by. The
+            // walker never actually steps through it -- total_ is already
+            // zero, so next() stops at once -- but seek(0) is still called
+            // unconditionally by reset(), so this has to be safe rather than
+            // merely unreached
+            if (dims_[i] == 0)
+            {
+                loc_[i] = 0;
+                continue;
+            }
             loc_[i] = remainder % dims_[i];
             offset_ += static_cast<Offset>(loc_[i] * strides_[i]);
             remainder /= dims_[i];
