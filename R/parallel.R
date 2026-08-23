@@ -15,10 +15,11 @@
 #' whole image to every worker and so defeat the purpose.
 #'
 #' The number of threads may be given per call, or set globally with
-#' `options(imply.threads = n)`. Leaving it unset lets compiled kernels use the
-#' backend's own default while R functions run serially.
+#' `options(imply.threads = n)`. Leaving both unset means serial, for compiled
+#' kernels and R functions alike. Multi-core use is opt-in.
 #'
 #' @param threads A thread count, or `NULL` to consult `getOption("imply.threads")`.
+#'   Leaving both unset runs serially.
 #' @return `parallelBackend()` returns `"libdispatch"`, `"openmp"` or `"none"`.
 #'   `canFork()` reports whether R functions can be run in parallel.
 #' @name parallelism

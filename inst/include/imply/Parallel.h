@@ -55,28 +55,18 @@ inline bool parallelAvailable ()
 }
 
 // The number of chunks to divide `items` into. A non-positive request means
-// "as many as the backend sees fit", which is capped so that each chunk still
-// holds at least `minimumPerChunk` items and the overhead stays worthwhile
+// serial, not "as many as the backend feels like": a shared library has no
+// way to know whether the process already owns a slice of a larger
+// allocation (a forked worker, an HPC job, a server handling concurrent
+// requests), so silently claiming every core would be the wrong default.
+// Multi-core use is opt-in, via an explicit thread count
 inline std::size_t chunkCount (const std::size_t items, const int threads,
                                const std::size_t minimumPerChunk = 1)
 {
     if (items == 0 || !parallelAvailable())
         return (items == 0 ? 0 : 1);
 
-    std::size_t requested;
-    if (threads > 0)
-        requested = static_cast<std::size_t>(threads);
-    else
-    {
-#if defined(_OPENMP)
-        requested = static_cast<std::size_t>(std::max(1, omp_get_max_threads()));
-#else
-        // libdispatch manages its own width, so ask for a reasonable number of
-        // chunks and let it decide how many to run at once
-        requested = 8;
-#endif
-    }
-
+    const std::size_t requested = (threads > 0) ? static_cast<std::size_t>(threads) : 1;
     const std::size_t affordable = std::max<std::size_t>(1, items / std::max<std::size_t>(1, minimumPerChunk));
     return std::max<std::size_t>(1, std::min(requested, std::min(items, affordable)));
 }

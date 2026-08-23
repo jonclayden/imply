@@ -1,7 +1,10 @@
 ## Parallelism, both tiers.
 ##
-## Tests stay at two threads, which is what CRAN permits during checks. The
-## substantive requirement is that dividing the work never changes the answer.
+## Everything defaults to serial (see chunkCount() in Parallel.h), so
+## multi-core paths are only ever exercised here by asking for them
+## explicitly, at no more than two threads, which is what CRAN permits during
+## checks. The substantive requirement is that dividing the work never
+## changes the answer.
 
 ## --- Backend reporting -----------------------------------------------------
 
@@ -13,12 +16,6 @@ expect_true(is.logical(canFork()) && length(canFork()) == 1L)
 
 ## --- Thread resolution -----------------------------------------------------
 
-## The suite runs throughout with options(imply.threads = 2L) set (see
-## tests/tinytest.R), to keep every backend within what CRAN permits during
-## checks, so the "nothing set at all" case has to clear it here and restore
-## it afterwards rather than assume it starts unset
-old <- getOption("imply.threads")
-options(imply.threads = NULL)
 expect_equal(resolveThreads(NULL), 0L)
 expect_equal(resolveThreads(4), 4L)
 expect_equal(resolveThreads(1), 1L)
@@ -27,6 +24,7 @@ expect_error(resolveThreads(-2), "positive integer")
 expect_error(resolveThreads(NA), "positive integer")
 
 ## The global option is consulted when nothing is passed
+old <- getOption("imply.threads")
 options(imply.threads = 3L)
 expect_equal(resolveThreads(NULL), 3L)
 expect_equal(resolveThreads(2), 2L)          # an explicit value still wins
@@ -46,6 +44,13 @@ if (info$available)
     ## Never more chunks than there are items to divide
     expect_equal(imply:::chunkPartition(3, 8), 3)
     expect_equal(imply:::chunkPartition(1, 8), 1)
+
+    ## Unset (0, or any non-positive value) means serial, not "as many as the
+    ## backend feels like": a shared library can't tell whether it is already
+    ## running inside somebody else's allocation, so claiming every core by
+    ## default would be the wrong call. Multi-core use is opt-in
+    expect_equal(imply:::chunkPartition(1000, 0), 1)
+    expect_equal(imply:::chunkPartition(1000, -1), 1)
 }
 expect_equal(imply:::chunkPartition(0, 4), 0)
 
