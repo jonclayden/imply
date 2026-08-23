@@ -31,7 +31,9 @@ export(voxelSize)
 export(worldTransform)
 importFrom(Rcpp,sourceCpp)
 importFrom(methods,setMethod)
-importFrom(stats,sd)
-importFrom(stats,var)
+importFrom(stats,
+  sd,
+  var
+)
 importFrom(utils,flush.console)
 useDynLib(imply, .registration = TRUE)

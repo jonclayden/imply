@@ -1,12 +1,15 @@
 Package: imply
 Version: 0.1.0
-Date: 2026-08-06
+Date: 2026-08-24
 Title: Efficiently Apply Functions to Images
 Authors@R: c(person("Jon", "Clayden", role=c("cre","aut"),
     email="code@clayden.org", comment=c(ORCID="0000-0002-6608-0619")))
-Description: Infrastructure for manipulating image data in a broad sense,
-	including parallelisation. Supports two and three dimensional intensity-based
-	image objects, image space embedded time series, vector fields and so on.
+Description: Infrastructure for handling generalised two and three dimensional
+	images, which may hold multiple values at each spatial location, and
+	efficiently applying functions to them. Dense, compacted and sparse
+	pixel/voxel representations are supported, with one core engine for
+	processing them all. Parallelism is supported via the 'parallel' package,
+	Grand Central Dispatch and OpenMP.
 Imports: Rcpp, S7, methods
 LinkingTo: Rcpp, RcppArray
 Suggests: tinytest
@@ -14,5 +17,5 @@ Encoding: UTF-8
 License: BSD_3_clause + file LICENCE
 URL: https://github.com/jonclayden/imply
 BugReports: https://github.com/jonclayden/imply/issues
-Config/roxygen2/version: 8.0.0
+Config/roxygen2/version: 8.1.0
 Config/roxygen2/markdown: TRUE

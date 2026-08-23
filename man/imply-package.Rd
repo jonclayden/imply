@@ -6,7 +6,7 @@
 \alias{imply-package}
 \title{imply: Efficiently Apply Functions to Images}
 \description{
-Infrastructure for manipulating image data in a broad sense, including parallelisation. Supports two and three dimensional intensity-based image objects, image space embedded time series, vector fields and so on.
+Infrastructure for handling generalised two and three dimensional images, which may hold multiple values at each spatial location, and efficiently applying functions to them. Dense, compacted and sparse pixel/voxel representations are supported, with one core engine for processing them all. Parallelism is supported via the 'parallel' package, Grand Central Dispatch and OpenMP.
 }
 \seealso{
 Useful links:
