@@ -9,7 +9,7 @@ Description: Infrastructure for handling generalised two and three dimensional
 	efficiently applying functions to them. Dense, compacted and sparse
 	pixel/voxel representations are supported, with one core engine for
 	processing them all. Parallelism is supported via the 'parallel' package,
-	Grand Central Dispatch and OpenMP.
+	'libdispatch' and 'OpenMP'.
 Imports: Rcpp, S7, methods
 LinkingTo: Rcpp, RcppArray
 Suggests: tinytest
