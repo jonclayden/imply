@@ -8,5 +8,6 @@ config.log
 config.status
 compile_commands.json
 src/Makevars
+inst/include/imply/Config.h
 autom4te.cache/
 .cache/

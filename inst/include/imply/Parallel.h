@@ -5,6 +5,15 @@
 #include <cstddef>
 #include <string>
 
+#include "Config.h"
+
+// Config.h records what imply's own build found; a client can still define
+// HAVE_LIBDISPATCH itself to force this on regardless (there's no equivalent
+// way to force it off, since the two checks are combined with ||)
+#if defined(IMPLY_HAVE_LIBDISPATCH) && !defined(HAVE_LIBDISPATCH)
+#define HAVE_LIBDISPATCH 1
+#endif
+
 #if defined(HAVE_LIBDISPATCH)
 #include <dispatch/dispatch.h>
 
