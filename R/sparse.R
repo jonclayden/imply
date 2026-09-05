@@ -22,6 +22,8 @@
 #' @param dim,spatial,voxelSize,worldTransform,spaceUnit,timeUnit Image
 #'   geometry, as for [denseImage()].
 #' @param template An image to take unspecified geometry from.
+#' @return An object of S7 class `sparseImage` representing a sparse image,
+#'   with properties corresponding to the arguments listed above.
 #' @name sparseImage
 NULL
 

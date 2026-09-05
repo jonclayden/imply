@@ -42,6 +42,10 @@ dimensionality if that is smaller.}
 
 \item{...}{Further arguments to \code{denseImage()}.}
 }
+\value{
+An object of S7 class \code{denseImage} representing a dense image, with
+properties corresponding to the arguments listed above.
+}
 \description{
 A dense image is an array carrying image geometry alongside it. It is an S7
 class whose parent is the \code{array} S3 class, which means every storage mode

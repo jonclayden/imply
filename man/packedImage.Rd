@@ -45,6 +45,11 @@ automatically when not given.}
 
 \item{...}{Further arguments to \code{denseImage()}.}
 }
+\value{
+An object of S7 class \code{packedImage} representing an image using a
+narrow, packed data representation, with properties corresponding to the
+arguments listed above.
+}
 \description{
 R has no single-precision floating-point type, so a large image held as
 \code{double} may cost twice the memory it needs, and potentially roughly twice

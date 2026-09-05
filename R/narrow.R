@@ -28,6 +28,9 @@
 #'   geometry, as for [denseImage()].
 #' @param template An image to take unspecified geometry from.
 #' @param ... Further arguments to `denseImage()`.
+#' @return An object of S7 class `packedImage` representing an image using a
+#'   narrow, packed data representation, with properties corresponding to the
+#'   arguments listed above.
 #' @name packedImage
 NULL
 

@@ -48,6 +48,15 @@ probability proportional to proximity.}
 \item{bounds}{Optional image extents, used only by probabilistic rounding to
 avoid selecting a location beyond the end of the image.}
 }
+\value{
+\code{isImage()} returns a Boolean value indicating whether its argument
+is one of the package's image types. \code{spatial()} returns the index of the
+last spatial dimension. \code{voxelSize()} returns a vector of sizes in each
+spatial dimension. \code{worldTransform()} returns a numeric affine transform
+matrix. \code{toVoxel()} and \code{fromVoxel()} return matrices of transformed
+points, one per row. The assignment functions are called for their
+side-effects.
+}
 \description{
 Accessors for the geometry of an image: the number of spatial dimensions,
 the voxel size and the placement of the image in world space.

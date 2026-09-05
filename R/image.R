@@ -27,6 +27,8 @@
 #' @param template An image to take unspecified geometry from.
 #' @param x An image.
 #' @param ... Further arguments to `denseImage()`.
+#' @return An object of S7 class `denseImage` representing a dense image, with
+#'   properties corresponding to the arguments listed above.
 #' @name denseImage
 NULL
 

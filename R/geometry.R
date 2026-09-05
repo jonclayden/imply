@@ -42,6 +42,13 @@
 #'   probability proportional to proximity.
 #' @param bounds Optional image extents, used only by probabilistic rounding to
 #'   avoid selecting a location beyond the end of the image.
+#' @return `isImage()` returns a Boolean value indicating whether its argument
+#'   is one of the package's image types. `spatial()` returns the index of the
+#'   last spatial dimension. `voxelSize()` returns a vector of sizes in each
+#'   spatial dimension. `worldTransform()` returns a numeric affine transform
+#'   matrix. `toVoxel()` and `fromVoxel()` return matrices of transformed
+#'   points, one per row. The assignment functions are called for their
+#'   side-effects.
 #' @name geometry
 NULL
 

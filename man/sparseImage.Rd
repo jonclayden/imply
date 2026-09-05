@@ -45,6 +45,10 @@ geometry, as for \code{\link[=denseImage]{denseImage()}}.}
 
 \item{...}{Further arguments to \code{sparseImage()}.}
 }
+\value{
+An object of S7 class \code{sparseImage} representing a sparse image,
+with properties corresponding to the arguments listed above.
+}
 \description{
 A sparse image stores only those spatial locations that hold data. Sparsity
 is over \emph{locations}, not over individual values: a location is either
