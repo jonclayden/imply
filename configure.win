@@ -1,0 +1,4 @@
+#!/bin/sh
+
+mkdir -p inst/include/imply
+cp tools/Config.h.win inst/include/imply/Config.h

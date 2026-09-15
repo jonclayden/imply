@@ -1,0 +1,9 @@
+#ifndef _IMPLY_CONFIG_H_
+#define _IMPLY_CONFIG_H_
+
+// Static counterpart to Config.h.in for Windows, copied into place by
+// configure.win
+
+// libdispatch is not available on Windows so there's nothing to define
+
+#endif
