@@ -3,23 +3,25 @@ knitr::opts_chunk$set(collapse=TRUE)
 set.seed(1)
 ```
 
-[![CI](https://github.com/jonclayden/imply/actions/workflows/ci.yaml/badge.svg)](https://github.com/jonclayden/imply/actions/workflows/ci.yaml)
+[![CRAN version](http://www.r-pkg.org/badges/version/imply)](https://cran.r-project.org/package=imply) [![CI](https://github.com/jonclayden/imply/actions/workflows/ci.yaml/badge.svg)](https://github.com/jonclayden/imply/actions/workflows/ci.yaml) [![status](https://tinyverse.netlify.app/badge/imply)](https://tinyverse.netlify.app)
 
 # imply: Efficient Generalised Images for R
 
-The `imply` package provides data structures for *generalised images* – two- or three-dimensional rasters that may hold a vector or time series at each location rather than a single intensity — together with infrastructure for applying functions to them in a memory-efficient and optionally parallelised fashion. The primary use case is medical imaging, but nothing in the package assumes this explicitly. The name is a portmanteau of "image" and "apply", and follows in the footsteps of influential packages like `plyr`.
+The `imply` package provides data structures for *generalised images* – two- or three-dimensional rasters that may hold a vector or time series at each location rather than a single intensity — together with infrastructure for applying functions to them in a memory-efficient and optionally parallelised fashion. The primary use case is medical imaging, but nothing in the package assumes this explicitly. The name is a portmanteau of "image" and "apply", and follows in the footsteps of influential packages like [`plyr`](https://cran.r-project.org/package=plyr).
 
 This is a general infrastructure package that has no dependency on any specific file format, although there is support for image geometry characteristics such as pixel/voxel sizes and transforms to represent a real-world spatial embedding. Reading, writing and interoperating with other image classes is largely out of scope,
 and left to packages that sit above this one.
 
+There is also no viewer, as conventions vary by application. [`RNifti::view()`](https://cran.r-project.org/package=RNifti) is one option for medical images; the standard `image()`, or [`mmand::display()`](https://cran.r-project.org/package=mmand), can be used for typical 2D bitmaps.
+
 Key features include
 
-- modest dependencies, including `Rcpp` and `RcppArray` for the C++ back-end and `S7` for modern R class types;
-- three storage representations — an ordinary R array, a masked sparse form, and a narrow packed form — served by **one** apply engine, so a kernel written
+- modest dependencies, including [`Rcpp`](https://cran.r-project.org/package=Rcpp) and [`RcppArray`](https://cran.r-project.org/package=RcppArray) for the C++ back-end and [`S7`](https://cran.r-project.org/package=S7) for modern R class types;
+- three [storage representations](#image-types) — an ordinary R array, a masked sparse form, and a narrow packed form — served by **one** apply engine, so a kernel written
   once runs unchanged whichever way the data happens to be held;
-- identical results between the package's `imapply()` function and `base::apply()`, but with significantly less peak memory usage, which is particularly important for large images;
-- easy parallelism using the standard `parallel` package, Grand Central Dispatch or OpenMP, plus progress reporting; and
-- a C++ API exposing its core engine to other packages.
+- identical results between the package's [`imapply()` function](#applying-and-reducing-functions) and `base::apply()`, but with significantly less peak memory usage, which is particularly important for large images;
+- easy [parallelism](#parallelism) using the standard `parallel` package, libdispatch (a.k.a. Grand Central Dispatch) or OpenMP, plus progress reporting; and
+- a [C++ API](#c-api) exposing its core engine to other packages.
 
 The package is in an early stage of development, and its interface may change in subsequent releases. The latest version of the package can be installed from GitHub using the `remotes` package:
 
