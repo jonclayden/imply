@@ -116,6 +116,54 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// strideIteratorRead
+Rcpp::NumericVector strideIteratorRead(Rcpp::NumericVector x, int stride);
+RcppExport SEXP _imply_strideIteratorRead(SEXP xSEXP, SEXP strideSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type stride(strideSEXP);
+    rcpp_result_gen = Rcpp::wrap(strideIteratorRead(x, stride));
+    return rcpp_result_gen;
+END_RCPP
+}
+// strideIteratorAccumulate
+double strideIteratorAccumulate(Rcpp::NumericVector x, int stride);
+RcppExport SEXP _imply_strideIteratorAccumulate(SEXP xSEXP, SEXP strideSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type stride(strideSEXP);
+    rcpp_result_gen = Rcpp::wrap(strideIteratorAccumulate(x, stride));
+    return rcpp_result_gen;
+END_RCPP
+}
+// strideIteratorReverse
+Rcpp::NumericVector strideIteratorReverse(Rcpp::NumericVector x, int stride);
+RcppExport SEXP _imply_strideIteratorReverse(SEXP xSEXP, SEXP strideSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type stride(strideSEXP);
+    rcpp_result_gen = Rcpp::wrap(strideIteratorReverse(x, stride));
+    return rcpp_result_gen;
+END_RCPP
+}
+// strideIteratorSort
+Rcpp::NumericVector strideIteratorSort(Rcpp::NumericVector x, int stride);
+RcppExport SEXP _imply_strideIteratorSort(SEXP xSEXP, SEXP strideSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type stride(strideSEXP);
+    rcpp_result_gen = Rcpp::wrap(strideIteratorSort(x, stride));
+    return rcpp_result_gen;
+END_RCPP
+}
 // valueRange
 Rcpp::List valueRange(Rcpp::RObject x);
 RcppExport SEXP _imply_valueRange(SEXP xSEXP) {
@@ -497,6 +545,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"_imply_pointsToVoxel", (DL_FUNC) &_imply_pointsToVoxel, 4},
     {"_imply_pointsFromVoxel", (DL_FUNC) &_imply_pointsFromVoxel, 4},
     {"_imply_roundPoints", (DL_FUNC) &_imply_roundPoints, 3},
+    {"_imply_strideIteratorRead", (DL_FUNC) &_imply_strideIteratorRead, 2},
+    {"_imply_strideIteratorAccumulate", (DL_FUNC) &_imply_strideIteratorAccumulate, 2},
+    {"_imply_strideIteratorReverse", (DL_FUNC) &_imply_strideIteratorReverse, 2},
+    {"_imply_strideIteratorSort", (DL_FUNC) &_imply_strideIteratorSort, 2},
     {"_imply_valueRange", (DL_FUNC) &_imply_valueRange, 1},
     {"_imply_calibrateStorage", (DL_FUNC) &_imply_calibrateStorage, 4},
     {"_imply_packNarrow", (DL_FUNC) &_imply_packNarrow, 4},

@@ -24,6 +24,10 @@
 //   OffsetWalker     traversal of an arbitrary subset of dimensions, yielding
 //                    memory offsets without materialising an index
 //
+//   StrideIterator   a random-access iterator over a strided run of values,
+//                    for handing a dense line straight to a standard
+//                    algorithm rather than gathering it into a buffer first
+//
 //   parallelFor      work division over libdispatch, OpenMP or neither
 //
 //   LocationMask     a bitset over spatial locations with O(1) rank, and the
@@ -37,6 +41,7 @@
 #include "imply/Raster.h"
 #include "imply/Space.h"
 #include "imply/Blocks.h"
+#include "imply/Iterator.h"
 #include "imply/Parallel.h"
 #include "imply/Storage.h"
 #include "imply/Dispatch.h"
@@ -47,6 +52,6 @@
 
 // Linked to the package version as 100 * (major version) + (minor version). May not
 // change if the API does not change, and in particular never changes with patch level
-#define IMPLY_API_VERSION 1
+#define IMPLY_API_VERSION 2
 
 #endif

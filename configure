@@ -642,6 +642,7 @@ ac_includes_default="\
 ac_header_cxx_list=
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+IMPLY_HAVE_LIBDISPATCH_DEFINE
 LIBDISPATCH_CPPFLAGS
 OPENMP_CXXFLAGS
 OBJEXT
@@ -3089,9 +3090,19 @@ rm -f core conftest.err conftest.$ac_objext conftest.beam \
     conftest$ac_exeext conftest.$ac_ext
 
 
+# Record what was found in a header shipped under inst/include, so that
+# client packages linking to imply see the same answer without needing to
+# run this same detection in their own configure script. The template lives
+# outside inst/ (tools/Config.h.in), since anything under inst/ is installed
+# verbatim -- the template itself, with its unsubstituted @VAR@, is no use to
+# a client and shouldn't ship alongside the real, generated header
+case "$LIBDISPATCH_CPPFLAGS" in
+  *-DHAVE_LIBDISPATCH*) IMPLY_HAVE_LIBDISPATCH_DEFINE="#define IMPLY_HAVE_LIBDISPATCH 1" ;;
+  *) IMPLY_HAVE_LIBDISPATCH_DEFINE="/* libdispatch was not found when imply was installed */" ;;
+esac
 
 
-ac_config_files="$ac_config_files src/Makevars"
+ac_config_files="$ac_config_files src/Makevars inst/include/imply/Config.h:tools/Config.h.in"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -3795,6 +3806,7 @@ for ac_config_target in $ac_config_targets
 do
   case $ac_config_target in
     "src/Makevars") CONFIG_FILES="$CONFIG_FILES src/Makevars" ;;
+    "inst/include/imply/Config.h") CONFIG_FILES="$CONFIG_FILES inst/include/imply/Config.h:tools/Config.h.in" ;;
 
   *) as_fn_error $? "invalid argument: '$ac_config_target'" "$LINENO" 5;;
   esac

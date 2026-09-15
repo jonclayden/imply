@@ -25,6 +25,22 @@ roundPoints <- function(locs, round = "conventional", bounds = NULL) {
     .Call(`_imply_roundPoints`, locs, round, bounds)
 }
 
+strideIteratorRead <- function(x, stride) {
+    .Call(`_imply_strideIteratorRead`, x, stride)
+}
+
+strideIteratorAccumulate <- function(x, stride) {
+    .Call(`_imply_strideIteratorAccumulate`, x, stride)
+}
+
+strideIteratorReverse <- function(x, stride) {
+    .Call(`_imply_strideIteratorReverse`, x, stride)
+}
+
+strideIteratorSort <- function(x, stride) {
+    .Call(`_imply_strideIteratorSort`, x, stride)
+}
+
 valueRange <- function(x) {
     .Call(`_imply_valueRange`, x)
 }

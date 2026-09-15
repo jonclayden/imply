@@ -31,5 +31,14 @@ m4_include([tools/m4/jc_dispatch.m4])
 JC_DISPATCH
 AC_SUBST(LIBDISPATCH_CPPFLAGS)
 
-AC_CONFIG_FILES([src/Makevars])
+# Record what was found in a header shipped under inst/include, so that
+# client packages linking to imply see the same answer without needing to
+# run this same detection in their own configure scripts
+case "$LIBDISPATCH_CPPFLAGS" in
+  *-DHAVE_LIBDISPATCH*) IMPLY_HAVE_LIBDISPATCH_DEFINE="#define IMPLY_HAVE_LIBDISPATCH 1" ;;
+  *) IMPLY_HAVE_LIBDISPATCH_DEFINE="/* libdispatch was not found when imply was installed */" ;;
+esac
+AC_SUBST(IMPLY_HAVE_LIBDISPATCH_DEFINE)
+
+AC_CONFIG_FILES([src/Makevars inst/include/imply/Config.h:tools/Config.h.in])
 AC_OUTPUT
