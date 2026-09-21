@@ -155,7 +155,14 @@ S7::method(`[`, denseImage) <- function (x, ..., drop = TRUE)
     eval(call, parent.frame())
 }
 
-S7::method(`[<-`, denseImage) <- function (x, ..., value)
+## Registered as an ordinary call rather than via `[<-`(x) <- value sugar,
+## because that sugar assigns its result back into a package-namespace
+## binding literally named `[<-`. R CMD check's "checking replacement
+## functions" step then tries to inspect that binding and crashes on some
+## older R versions (get(f, envir = code_env) : invalid first argument),
+## rather than just noting it. method<- is an ordinary function, so calling
+## it directly avoids creating the binding at all
+S7::`method<-`(`[<-`, denseImage, function (x, ..., value)
 {
     call <- sys.call()
     call[[1L]] <- quote(`[<-`)
@@ -164,7 +171,7 @@ S7::method(`[<-`, denseImage) <- function (x, ..., value)
 
     ## Replacement preserves shape, so the geometry still applies
     denseImage(result, template = x)
-}
+})
 
 S7::method(print, denseImage) <- function (x, ...)
 {
