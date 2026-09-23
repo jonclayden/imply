@@ -172,3 +172,98 @@ expect_true(mean(draws == 5) > 0.6 && mean(draws == 5) < 0.9)
 
 expect_error(imply:::roundPoints(points, "nonsense"), "Rounding type")
 expect_error(imply:::pointsToVoxel(points, diag(4), c(1, 1, 1), "nonsense"), "Point type")
+
+## --- Geometry objects ------------------------------------------------------
+
+## A bare geometry describes a grid with no data, and every accessor accepts
+## one in place of an image
+grid <- imageGeometry(c(91L, 109L, 91L), worldTransform = las, unit = "mm")
+expect_true(isImageGeometry(grid))
+expect_false(isImage(grid))
+expect_equal(spatial(grid), 3L)
+expect_equal(voxelSize(grid), c(2, 2, 2))
+expect_equal(worldTransform(grid), las)
+expect_equal(grid@unit, "mm")
+expect_identical(geometry(grid), grid)
+expect_equal(as.vector(fromVoxel(c(1, 1, 1), grid)), las[1:3, 4])
+
+## Explicit voxel size wins over the one implied by the transform, as for images
+expect_equal(voxelSize(imageGeometry(c(4L, 4L, 4L), voxelSize = c(1, 1, 1), worldTransform = las)), c(1, 1, 1))
+
+## Defaults: unit voxels at the origin, unit unknown
+plainGrid <- imageGeometry(c(4L, 5L))
+expect_equal(voxelSize(plainGrid), c(1, 1))
+expect_equal(worldTransform(plainGrid), diag(4))
+expect_equal(plainGrid@unit, "unknown")
+expect_equal(spatial(imageGeometry()), 0L)
+
+## Validation is the geometry's own
+expect_error(imageGeometry(c(4L, 4L), voxelSize = c(1, 1, 1)), "one element per spatial dimension")
+expect_error(imageGeometry(c(4L, NA)), "missing or negative")
+expect_error(imageGeometry(c(4L, 4L, 4L), worldTransform = sheared), "shear")
+expect_error(imageGeometry(4L, unit = c("mm", "cm")), "single value")
+
+## Setters work on a bare geometry, and give back a geometry
+voxelSize(grid) <- c(1, 1, 1)
+expect_true(isImageGeometry(grid))
+expect_equal(worldTransform(grid)[1:3, 4], las[1:3, 4])
+worldTransform(grid) <- las
+expect_equal(voxelSize(grid), c(2, 2, 2))
+
+## An image's geometry is the same object, and can be replaced wholesale
+image <- denseImage(array(0, c(91L, 109L, 91L)), worldTransform = las, unit = "mm")
+expect_identical(geometry(image), grid)
+expect_identical(geometry(asSparse(image)), grid)
+expect_identical(geometry(asPacked(image, "int16")), grid)
+geometry(image) <- imageGeometry(c(91L, 109L, 91L))
+expect_equal(worldTransform(image), diag(4))
+expect_true(isDenseImage(image))
+expect_error(geometry(image) <- imageGeometry(c(91L, 109L, 90L)), "does not match")
+
+## A plain array has a default geometry over its leading three dimensions
+expect_equal(geometry(array(0, c(3L, 4L, 5L, 6L)))@dims, c(3L, 4L, 5L))
+expect_equal(spatial(1:10), 1L)
+expect_error(geometry(list(1)), "Cannot find a geometry")
+
+## The world centre of the grid, and its physical extent
+expect_equal(centre(grid), as.vector(las %*% c(45, 54, 45, 1))[1:3])
+expect_equal(extent(grid), c(182, 218, 182))
+expect_equal(centre(imageGeometry(c(5L, 3L))), c(2, 1, 0))
+expect_identical(center(grid), centre(grid))
+expect_equal(centre(grid), centre(denseImage(array(0, c(91L, 109L, 91L)), geometry = grid)))
+
+## Comparison is by grid and placement, allowing for floating-point noise
+expect_true(sameGeometry(grid, image <- denseImage(array(0, c(91L, 109L, 91L)), geometry = grid)))
+nudged <- las
+nudged[1, 4] <- nudged[1, 4] + 1e-10
+expect_true(sameGeometry(grid, imageGeometry(c(91L, 109L, 91L), worldTransform = nudged)))
+expect_false(sameGeometry(grid, imageGeometry(c(91L, 109L, 91L), worldTransform = oblique)))
+expect_false(sameGeometry(grid, imageGeometry(c(91L, 109L, 90L), worldTransform = las)))
+
+## ...and units only when both are known
+expect_true(sameGeometry(grid, imageGeometry(c(91L, 109L, 91L), worldTransform = las)))
+expect_false(sameGeometry(grid, imageGeometry(c(91L, 109L, 91L), worldTransform = las, unit = "um")))
+
+## Two-dimensional points are accepted for a two-dimensional grid. Voxel
+## coordinates come back with two columns, but world coordinates always have
+## three, since a two-dimensional grid may be placed obliquely in world space
+flatGrid <- imageGeometry(c(10L, 10L), worldTransform = diag(c(2, 3, 1, 1)))
+expect_equal(fromVoxel(c(2, 3), flatGrid), matrix(c(2, 6, 0), 1L))
+expect_equal(fromVoxel(c(2, 3), flatGrid, type = "voxel"), matrix(c(2, 3), 1L))
+expect_equal(toVoxel(matrix(c(2, 6, 4, 9), 2L, byrow = TRUE), flatGrid), matrix(c(2, 3, 3, 4), 2L, byrow = TRUE))
+
+tilted <- diag(4)
+tilted[1:3, 1:3] <- rbind(c(1, 0, 0), c(0, cos(0.5), -sin(0.5)), c(0, sin(0.5), cos(0.5)))
+tiltedGrid <- imageGeometry(c(10L, 10L), worldTransform = tilted)
+expect_equal(fromVoxel(c(1, 2), tiltedGrid), matrix(c(0, cos(0.5), sin(0.5)), 1L))
+expect_equal(toVoxel(fromVoxel(c(4, 7), tiltedGrid), tiltedGrid), matrix(c(4, 7, 1), 1L))
+
+## ...and likewise one-dimensional points for a one-dimensional grid
+lineGrid <- imageGeometry(10L, worldTransform = diag(c(2, 1, 1, 1)))
+expect_equal(fromVoxel(4, lineGrid), matrix(c(6, 0, 0), 1L))
+expect_equal(toVoxel(c(6, 0, 0), lineGrid), matrix(c(4, 1, 1), 1L))
+expect_equal(fromVoxel(matrix(c(1, 4), ncol = 1L), lineGrid, type = "voxel"), matrix(c(1, 4), ncol = 1L))
+
+output <- capture.output(print(grid))
+expect_true(any(grepl("Image geometry: 91 x 109 x 91", output)))
+expect_true(any(grepl("2 x 2 x 2 mm", output)))

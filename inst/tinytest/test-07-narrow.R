@@ -134,8 +134,8 @@ reference <- as.array(packedSeries)
 
 expect_equal(imapply(packedSeries, 4, sum), apply(reference, 4, sum))
 expect_equal(as.array(voxelApply(packedSeries, mean)), apply(reference, 1:3, mean))
-expect_equal(lineApply(packedSeries, sum, axis = 1), apply(reference, c(2, 3), sum))
-expect_equal(sliceApply(packedSeries, sum, axis = 3), apply(reference, 3, sum))
+expect_equal(as.array(lineApply(packedSeries, sum, axis = 1)), apply(reference, c(2, 3), sum))
+expect_equal(as.vector(sliceApply(packedSeries, sum, axis = 3)), apply(reference, 3, sum))
 
 expect_equal(unique(as.vector(voxelApply(packedSeries, typeof))), "double")
 expect_equal(unique(as.vector(voxelApply(packedSeries, length))), 5L)
@@ -156,7 +156,7 @@ sparseSeries <- asSparse(denseImage(thresholded))
 
 expect_identical(imapply(sparseSeries, 4, sum), apply(thresholded, 4, sum))
 expect_identical(as.array(voxelApply(sparseSeries, mean)), apply(thresholded, 1:3, mean))
-expect_identical(lineApply(sparseSeries, sum, axis = 2), apply(thresholded, c(1, 3), sum))
+expect_identical(as.array(lineApply(sparseSeries, sum, axis = 2)), apply(thresholded, c(1, 3), sum))
 expect_identical(imapply(sparseSeries, 4, sum, threads = 2L),
                  imapply(sparseSeries, 4, sum, threads = 1L))
 

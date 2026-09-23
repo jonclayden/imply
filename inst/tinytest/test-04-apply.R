@@ -136,7 +136,7 @@ expect_error(voxelApply(denseImage(array(0, c(4L, 5L, 6L))), mean), "nothing to 
 plain <- as.array(image)
 for (axis in 1:3)
 {
-    expect_identical(lineApply(image, sum, axis = axis),
+    expect_identical(as.array(lineApply(image, sum, axis = axis)),
                      apply(plain, seq_len(3)[-axis], sum),
                      info = paste("lineApply along axis", axis))
     expect_equal(dim(lineApply(image, sum, axis = axis)), dim(image)[seq_len(3)[-axis]])
@@ -158,14 +158,14 @@ expect_equal(length(lineApply(flat, sum, axis = 1)), 5L)
 expect_equal(length(lineApply(flat, sum, axis = 2)), 4L)
 expect_equal(unique(as.vector(lineApply(flat, length, axis = 1))), 4L)
 expect_equal(unique(as.vector(lineApply(flat, length, axis = 2))), 5L)
-expect_identical(lineApply(flat, sum, axis = 1), apply(as.array(flat), 2, sum))
+expect_identical(as.vector(lineApply(flat, sum, axis = 1)), apply(as.array(flat), 2, sum))
 expect_null(lineApply(flat, dim, axis = 1))
 
 ## A two-dimensional image with a series at each location: the line brings its
 ## series along
 flatSeries <- denseImage(array(rnorm(4 * 5 * 7), c(4L, 5L, 7L)), spatial = 2L, voxelSize = c(1, 1))
 expect_equal(lineApply(flatSeries, dim, axis = 1)[, 1], c(4L, 7L))
-expect_identical(lineApply(flatSeries, sum, axis = 1), apply(as.array(flatSeries), 2, sum))
+expect_identical(as.vector(lineApply(flatSeries, sum, axis = 1)), apply(as.array(flatSeries), 2, sum))
 
 ## Results longer than one value stack on the leading dimension
 expect_equal(dim(lineApply(image, range, axis = 1)), c(2L, 5L, 6L))
@@ -180,7 +180,7 @@ expect_identical(lineApply(withNA, sum, axis = 1, simplify = FALSE),
                  apply(withNA, c(2, 3), sum, simplify = FALSE))
 
 ## Plain arrays behave identically
-expect_identical(lineApply(plain, sum, axis = 2), lineApply(image, sum, axis = 2))
+expect_identical(lineApply(plain, sum, axis = 2), as.array(lineApply(image, sum, axis = 2)))
 
 ## The axis must be a spatial one; iterating over time is imapply()'s job
 expect_error(lineApply(image, sum, axis = 4), "spatial dimension")
@@ -191,9 +191,9 @@ expect_error(lineApply(denseImage(rnorm(10)), sum, axis = 1), "single line")
 
 ## --- sliceApply ------------------------------------------------------------
 
-expect_equal(sliceApply(image, sum, axis = 3), apply(as.array(image), 3, sum))
-expect_equal(sliceApply(image, sum, axis = 1), apply(as.array(image), 1, sum))
-expect_equal(sliceApply(image, sum), apply(as.array(image), 3, sum))
+expect_identical(as.vector(sliceApply(image, sum, axis = 3)), apply(as.array(image), 3, sum))
+expect_identical(as.vector(sliceApply(image, sum, axis = 1)), apply(as.array(image), 1, sum))
+expect_identical(as.vector(sliceApply(image, sum)), apply(as.array(image), 3, sum))
 
 ## Each slice arrives with the remaining dimensions intact
 expect_equal(sliceApply(image, dim, axis = 1)[, 1], c(5L, 6L, 10L))
@@ -205,12 +205,86 @@ expect_error(sliceApply(image, sum, axis = c(1, 2)), "spatial dimension")
 ## Slices need three spatial dimensions, which is what lineApply() is for
 expect_error(sliceApply(flat, sum), "lineApply")
 
+## --- Geometry of line and slice results ------------------------------------
+
+## A single value per line or slice is an image over the axes that remain,
+## each location placed at the centre of the line or slice it summarises. The
+## transform is oblique and anisotropic, so that nothing is right by accident
+set.seed(3)
+rotation <- qr.Q(qr(matrix(rnorm(9), 3)))
+xform <- diag(4)
+xform[1:3, 1:3] <- rotation %*% diag(c(2, 2, 3))
+xform[1:3, 4] <- c(10, -20, 30)
+placed <- denseImage(array(rnorm(4 * 5 * 6 * 10), c(4L, 5L, 6L, 10L)), worldTransform = xform, unit = "mm")
+
+## World position of a one-based voxel of the input
+worldOf <- function (voxel) as.vector(xform %*% c(voxel - 1, 1))[1:3]
+
+for (axis in 1:3)
+{
+    info <- paste("lineApply along axis", axis)
+    lines <- lineApply(placed, sum, axis = axis)
+    kept <- setdiff(1:3, axis)
+    expect_true(isDenseImage(lines), info = info)
+    expect_equal(dim(lines), dim(placed)[kept], info = info)
+    expect_equal(voxelSize(lines), c(2, 2, 3)[kept], info = info)
+    expect_equal(geometry(lines)@unit, "mm", info = info)
+    expect_equal(centre(lines), centre(placed), info = info)
+
+    ## The first location of the result sits midway along the first line
+    first <- c(1, 1, 1)
+    last <- first
+    last[axis] <- dim(placed)[axis]
+    expect_equal(as.vector(fromVoxel(c(1, 1), lines)), (worldOf(first) + worldOf(last)) / 2, info = info)
+
+    ## ...and a step along a retained axis is the same step in world space as
+    ## it was in the input
+    step <- c(0, 0)
+    step[1] <- 1
+    inputStep <- c(0, 0, 0)
+    inputStep[kept[1]] <- 1
+    expect_equal(as.vector(fromVoxel(c(2, 1), lines) - fromVoxel(c(1, 1), lines)),
+                 worldOf(first + inputStep) - worldOf(first), info = info)
+}
+
+## A slice keeps only the axis it cuts across
+for (axis in 1:3)
+{
+    info <- paste("sliceApply across axis", axis)
+    slices <- sliceApply(placed, max, axis = axis)
+    expect_true(isDenseImage(slices), info = info)
+    expect_equal(dim(slices), dim(placed)[axis], info = info)
+    expect_equal(voxelSize(slices), c(2, 2, 3)[axis], info = info)
+    expect_equal(centre(slices), centre(placed), info = info)
+    expect_equal(as.vector(fromVoxel(3, slices) - fromVoxel(2, slices)), xform[1:3, axis], info = info)
+}
+
+## The world transform of a reduced result is still rigid plus scale, and so
+## can be set back on an image of the same shape
+expect_silent(denseImage(array(0, c(5L, 6L)), worldTransform = worldTransform(lineApply(placed, sum, axis = 1))))
+
+## The two-dimensional case gives a one-dimensional image
+flatLines <- lineApply(flat, sum, axis = 2)
+expect_true(isDenseImage(flatLines))
+expect_equal(spatial(flatLines), 1L)
+expect_equal(centre(flatLines), centre(flat))
+
+## Anything but a single value per line or slice is left as imapply() gives it
+expect_false(isImage(lineApply(placed, range, axis = 1)))
+expect_false(isImage(lineApply(placed, sum, axis = 1, simplify = FALSE)))
+expect_false(isImage(sliceApply(placed, dim, axis = 3)))
+expect_false(isImage(lineApply(as.array(placed), sum, axis = 1)))
+
+## Sparse and packed inputs are placed identically
+expect_identical(geometry(lineApply(asSparse(placed), sum, axis = 2)), geometry(lineApply(placed, sum, axis = 2)))
+expect_identical(geometry(sliceApply(asPacked(placed), sum, axis = 1)), geometry(sliceApply(placed, sum, axis = 1)))
+
 ## --- Plain arrays and images agree -----------------------------------------
 
 ## No custom class is ever required, and using one changes nothing
 expect_identical(voxelApply(as.array(image), mean), apply(as.array(image), 1:3, mean))
 expect_identical(imapply(image, 4, sum), imapply(as.array(image), 4, sum))
-expect_identical(sliceApply(as.array(image), sum, axis = 3), sliceApply(image, sum, axis = 3))
+expect_identical(sliceApply(as.array(image), sum, axis = 3), as.vector(sliceApply(image, sum, axis = 3)))
 
 ## --- Memory ----------------------------------------------------------------
 
