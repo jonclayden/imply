@@ -47,11 +47,20 @@ Three storage representations, **one** apply engine:
 
 They are unified in C++ by a shared accessor interface (`DenseAccessor`, `SparseAccessor`, `NarrowAccessor`), all with an integer subscript returning a value. `gather()` in `Blocks.h` is where a narrow type is widened and an absent sparse location becomes a zero, so **no kernel needs to know which representation it is reading**. Adding a fourth representation means adding an accessor, not touching any kernel.
 
+Geometry is **composed, not inherited**. Each image class holds a `geometry` property, an S7 `imageGeometry` (grid `dims`, `voxelSize`, rigid `orientation`, `unit`), plus only the fields specific to its representation. Inheritance is not an option: `denseImage` must have `array` as its parent. Consequences:
+
+- The number of spatial dimensions is **not stored**: it is `length(geometry@dims)`. Each image validator checks that the grid matches the leading dimensions of its data; the geometry validates itself.
+- Every geometry function (`spatial()`, `voxelSize()`, `worldTransform()`, `toVoxel()`, `centre()`, `sameGeometry()`, the setters, …) calls `geometry(x)` first, so it accepts an image, a bare geometry, or a plain array (unit voxels at the origin).
+- Constructors take `geometry =` (a geometry or an image holding one) to carry geometry across; `resolveGeometry()` in `geometry.R` is the one place the precedence of explicit arguments over it is decided.
+- C++ finds the spatial split in `spatialOf()` (`RImage.h`) by reading the `dims` attribute of the `geometry` attribute. S7 properties are plain attributes, so no S7 knowledge is needed.
+- `voxelApply()`, `lineApply()` and `sliceApply()` return an image when `fun` gives one value per location, line or slice. `dropAxes()` removes the traversed axes from the geometry, placing each result location at the centre of what it summarises, so `centre()` is invariant. Only these three verbs do this; `imapply()` and `imreduce()` always return what `base::apply()` would.
+- There is deliberately no time unit, or other description of the value dimensions. What the values at a location mean (a time series, a tensor, SH coefficients) is for a client package to model, by wrapping an image.
+
 Key pieces:
 
 - **`Raster<D>`** (`inst/include/imply/Raster.h`) — an index space with *general strides*, split at a runtime `spatial` index into leading spatial dimensions and trailing value dimensions. `DynamicRaster` and `FixedRaster<D>` come from one template. Note that the apply and reduce engines do **not** currently use it: they compute strides inline and walk with `OffsetWalker`. `Raster` is reachable only from the unexported probe functions in `src/raster.cpp` and from the public header API.
 - **`OffsetWalker`** (`Blocks.h`) — odometer traversal of an arbitrary subset of dimensions, yielding memory offsets incrementally with no allocation. This is what lets a sub-array be gathered without permuting the whole image, which is where the 2x memory saving over `base::apply` comes from.
-- **`ImageSpace`** (`Space.h`) — voxel-to-world geometry. Header-only, no file-format dependency.
+- **`ImageSpace`** (`Space.h`) — voxel-to-world geometry, the C++ counterpart of `imageGeometry`. Header-only, no file-format dependency.
 - **`parallelFor`** (`Parallel.h`) — libdispatch, OpenMP or serial, dividing work into a fixed number of *chunks* so a requested thread count is meaningful on both backends.
 - **Sinks** (`Sink.h`) — results are written through a preallocated typed vector where every call returns the same shape, falling back to a list otherwise. A file-backed sink would slot in here.
 
