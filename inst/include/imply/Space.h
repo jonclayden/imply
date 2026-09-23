@@ -104,27 +104,28 @@ public:
     Affine inverse () const;
 };
 
-// The geometry of the space an image is embedded within. Deliberately free of
-// any dependency on a file format: it holds only what the mapping needs, and
-// NIfTI or other interop is layered on top
+// The geometry of the space an image is embedded within, matching the R
+// imageGeometry class. Deliberately free of any dependency on a file format:
+// it holds only what the mapping needs, and NIfTI or other interop is layered
+// on top. The extent of the grid is optional, since the point conversions do
+// not need it, but when present it has one element per spatial dimension
 class ImageSpace
 {
 public:
     int spatial;
+    std::vector<std::size_t> dims;
     std::vector<double> pixdim;
     Affine xform;
-    std::string spaceUnit, timeUnit;
+    std::string unit;
 
     ImageSpace ()
-        : spatial(0), xform(Affine::identity()), spaceUnit("unknown"), timeUnit("unknown") {}
+        : spatial(0), xform(Affine::identity()), unit("unknown") {}
 
     ImageSpace (const int spatial, const std::vector<double> &pixdim)
-        : spatial(spatial), pixdim(pixdim), xform(Affine::scaling(pixdim)),
-          spaceUnit("unknown"), timeUnit("unknown") {}
+        : spatial(spatial), pixdim(pixdim), xform(Affine::scaling(pixdim)), unit("unknown") {}
 
     ImageSpace (const int spatial, const std::vector<double> &pixdim, const Affine &xform)
-        : spatial(spatial), pixdim(pixdim), xform(xform),
-          spaceUnit("unknown"), timeUnit("unknown") {}
+        : spatial(spatial), pixdim(pixdim), xform(xform), unit("unknown") {}
 
     // Convert a point of the given type to voxel coordinates
     Point toVoxel (const Point &p, const PointType type) const;
