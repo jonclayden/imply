@@ -34,16 +34,11 @@ isStillAbsent <- function (value)
 rebuild <- function (template, mask, values)
 {
     tight <- tightenMask(mask, values, locationCount(template), elementCount(template))
-    sparseImage(mask = tight$mask, values = tight$values, dim = template@dims,
-                spatial = template@spatial, voxelSize = template@voxelSize,
-                worldTransform = worldTransform(template),
-                spaceUnit = template@spaceUnit, timeUnit = template@timeUnit)
+    sparseImage(mask = tight$mask, values = tight$values, dim = template@dims, geometry = template@geometry)
 }
 
 denseFrom <- function (template, values)
-    denseImage(array(values, template@dims), spatial = template@spatial, voxelSize = template@voxelSize,
-               worldTransform = worldTransform(template), spaceUnit = template@spaceUnit,
-               timeUnit = template@timeUnit)
+    denseImage(array(values, template@dims), geometry = template@geometry)
 
 ## --- Binary operations -----------------------------------------------------
 
@@ -86,7 +81,7 @@ sparseWithSparse <- function (op, e1, e2)
 {
     if (!identical(e1@dims, e2@dims))
         stop("Sparse images must have the same dimensions to be combined")
-    if (!identical(e1@spatial, e2@spatial))
+    if (!identical(spatial(e1), spatial(e2)))
         stop("Sparse images must have the same number of spatial dimensions")
 
     absent <- absentResult(op, zeroOf(e1@values), zeroOf(e2@values))

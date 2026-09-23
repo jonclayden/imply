@@ -21,14 +21,17 @@
 #'   coordinates. Decomposed into rotation/translation and voxel size on
 #'   assignment; see [geometry].
 #' @param spatial The number of leading dimensions that index location rather
-#'   than the value held at each location. Defaults to three, or the
-#'   dimensionality if that is smaller.
-#' @param spaceUnit,timeUnit Units of measurement.
-#' @param template An image to take unspecified geometry from.
+#'   than the value held at each location. Defaults to the number the geometry
+#'   has, if one is given, or otherwise to three, or the dimensionality if that
+#'   is smaller.
+#' @param unit The unit of measurement of voxel size and world coordinates.
+#' @param geometry An [imageGeometry][geometry], or an image to take one from, giving
+#'   whatever is not specified explicitly. Its grid must match the leading
+#'   dimensions of the data.
 #' @param x An image.
 #' @param ... Further arguments to `denseImage()`.
 #' @return An object of S7 class `denseImage` representing a dense image, with
-#'   properties corresponding to the arguments listed above.
+#'   a `geometry` property holding its [imageGeometry][geometry].
 #' @name denseImage
 NULL
 
@@ -40,49 +43,29 @@ arrayClass <- S7::new_S3_class("array", constructor = function (.data = array(nu
     .data
 })
 
+## The geometry must describe the leading dimensions of the data, which is the
+## one thing about it that the geometry cannot check for itself
+geometryMismatch <- function (geometry, dims)
+{
+    spatial <- length(geometry@dims)
+    if (spatial > length(dims))
+        return(paste0("@geometry has ", spatial, " spatial dimensions, but the image has only ", length(dims)))
+    if (!identical(geometry@dims, as.integer(dims[seq_len(spatial)])))
+        return(paste0("@geometry is for a grid of ", formatDims(geometry@dims),
+                      ", which does not match the image's leading dimensions"))
+    NULL
+}
+
 #' @rdname denseImage
 #' @export
 denseImage <- S7::new_class("denseImage",
     parent = arrayClass,
     properties = list(
-        spatial = S7::class_integer,
-        voxelSize = S7::class_double,
-        orientation = S7::class_double,
-        spaceUnit = S7::class_character,
-        timeUnit = S7::class_character
+        geometry = imageGeometry
     ),
-    validator = function (self) {
-        nDims <- length(dim(self))
-
-        if (length(self@spatial) != 1L || is.na(self@spatial))
-            return("@spatial must be a single value")
-        if (self@spatial < 0L || self@spatial > nDims)
-            return(paste0("@spatial must be between 0 and ", nDims))
-
-        if (length(self@voxelSize) != self@spatial)
-            return(paste0("@voxelSize must have one element per spatial dimension (", self@spatial, ")"))
-        if (anyNA(self@voxelSize))
-            return("@voxelSize must not be missing")
-        if (any(self@voxelSize <= 0))
-            return("@voxelSize must be strictly positive")
-
-        if (!identical(dim(self@orientation), c(4L, 4L)))
-            return("@orientation must be a 4x4 matrix")
-        if (anyNA(self@orientation))
-            return("@orientation must not contain missing values")
-        if (!isTRUE(all.equal(self@orientation[4, ], c(0, 0, 0, 1))))
-            return("@orientation must be affine, with a final row of (0, 0, 0, 1)")
-        block <- self@orientation[1:3, 1:3, drop = FALSE]
-        if (max(abs(crossprod(block) - diag(3))) > orthogonalityTolerance)
-            return("@orientation must be rigid: a rotation or reflection, with no scale or shear")
-
-        if (length(self@spaceUnit) != 1L || length(self@timeUnit) != 1L)
-            return("@spaceUnit and @timeUnit must each be a single value")
-
-        NULL
-    },
+    validator = function (self) geometryMismatch(self@geometry, dim(self)),
     constructor = function (.data, voxelSize = NULL, worldTransform = NULL, spatial = NULL,
-                            spaceUnit = NULL, timeUnit = NULL, template = NULL)
+                            unit = NULL, geometry = NULL)
     {
         if (!is.atomic(.data))
             stop("Image data must be an atomic array")
@@ -91,25 +74,8 @@ denseImage <- S7::new_class("denseImage",
         if (is.null(dim(.data)))
             dim(.data) <- length(.data)
 
-        nDims <- length(dim(.data))
-
-        ## Explicit arguments win, then a value implied by another explicit
-        ## argument (a worldTransform implies both orientation and voxel
-        ## size), then the template, then defaults
-        spatial <- as.integer(spatial %||% attr(template, "spatial") %||% min(3L, nDims))
-
-        decomposed <- if (is.null(worldTransform)) NULL
-                      else decomposeTransform(validateXform(worldTransform), spatial)
-        orientation <- decomposed$orientation %||% attr(template, "orientation") %||% diag(4)
-        voxelSize <- as.double(voxelSize %||% decomposed$voxelSize %||%
-                               attr(template, "voxelSize") %||% rep(1, max(spatial, 0L)))
-
         S7::new_object(.data,
-            spatial = spatial,
-            voxelSize = voxelSize,
-            orientation = orientation,
-            spaceUnit = as.character(spaceUnit %||% attr(template, "spaceUnit") %||% "unknown"),
-            timeUnit = as.character(timeUnit %||% attr(template, "timeUnit") %||% "unknown"))
+            geometry = resolveGeometry(dim(.data), spatial, voxelSize, worldTransform, unit, geometry))
     })
 
 #' @rdname denseImage
@@ -125,14 +91,9 @@ asDense <- function (x, ...)
     if (isDenseImage(x))
         return (x)
     else if (isPackedImage(x))
-        return(denseImage(as.array(x), spatial = x@spatial, voxelSize = x@voxelSize,
-                          worldTransform = worldTransform(x),
-                          spaceUnit = x@spaceUnit, timeUnit = x@timeUnit))
+        return(denseImage(as.array(x), geometry = x@geometry))
     else if (isSparseImage(x))
-        return(denseImage(sparseToDense(x@mask, x@values, x@dims, x@spatial),
-                          spatial = x@spatial, voxelSize = x@voxelSize,
-                          worldTransform = worldTransform(x), spaceUnit = x@spaceUnit,
-                          timeUnit = x@timeUnit))
+        return(denseImage(sparseToDense(x@mask, x@values, x@dims, spatial(x)), geometry = x@geometry))
     else
         return(denseImage(x, ...))
 }
@@ -170,21 +131,16 @@ S7::`method<-`(`[<-`, denseImage, function (x, ..., value)
     result <- eval(call, parent.frame())
 
     ## Replacement preserves shape, so the geometry still applies
-    denseImage(result, template = x)
+    denseImage(result, geometry = x@geometry)
 })
 
 S7::method(print, denseImage) <- function (x, ...)
 {
     dims <- dim(x)
-    nSpatial <- x@spatial
+    nSpatial <- spatial(x)
 
     cat(sprintf("Dense image: %s (%s)\n", paste(dims, collapse = " x "), typeof(x)))
-    if (nSpatial > 0L)
-    {
-        cat(sprintf("  Spatial dimensions : %s\n", paste(dims[seq_len(nSpatial)], collapse = " x ")))
-        cat(sprintf("  Voxel size         : %s %s\n",
-                    paste(signif(x@voxelSize, 4), collapse = " x "), ifelse(x@spaceUnit=="unknown", "(unit unknown)", x@spaceUnit)))
-    }
+    printGeometry(x@geometry)
     if (nSpatial < length(dims))
         cat(sprintf("  Values per location: %d\n", prod(dims[-seq_len(nSpatial)])))
 
@@ -193,7 +149,7 @@ S7::method(print, denseImage) <- function (x, ...)
 
 S7::method(as.array, denseImage) <- function (x, ...)
 {
-    for (name in c("spatial", "voxelSize", "orientation", "spaceUnit", "timeUnit", "S7_class"))
+    for (name in c("geometry", "S7_class"))
         attr(x, name) <- NULL
     class(x) <- NULL
     x
