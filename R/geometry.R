@@ -1,7 +1,12 @@
 #' Image geometry
 #'
-#' Accessors for the geometry of an image: the number of spatial dimensions,
-#' the voxel size and the placement of the image in world space.
+#' An image geometry describes the spatial grid an image is sampled on,
+#' without any of its data: the extent of the grid, the voxel size, the
+#' placement of the grid in world space and the unit of measurement. Every
+#' image holds one, and any of the functions here may be given either an image
+#' or a bare geometry. A bare geometry is useful in its own right, to describe
+#' a space that no image has been created in yet, such as the target grid of a
+#' resampling.
 #'
 #' These are deliberately free of any dependency on a file format, and of any
 #' assumption that geometry is anatomical: an image with no meaningful spatial
@@ -29,11 +34,22 @@
 #' `x[i, j, k]` indexing. The affine itself, and the rest of the package's C++
 #' API, is zero-based throughout.
 #'
-#' @param x An image, or for `worldTransform` either an image or a 4x4 matrix.
+#' @param dims The extent of the grid, one per spatial dimension.
+#' @param voxelSize Voxel size, one per spatial dimension.
+#' @param worldTransform A 4x4 affine transform mapping (zero-based) voxel to
+#'   world coordinates, from which the voxel size is also taken unless it is
+#'   given separately.
+#' @param unit The unit of measurement of voxel size and world coordinates.
+#' @param x,y Images or geometries. Anything else with a dimension attribute is
+#'   treated as having unit voxels at the origin, with the leading three
+#'   dimensions (or all of them, if fewer) spatial. `worldTransform()` also
+#'   accepts a bare 4x4 matrix, which is validated and returned.
 #' @param value A replacement value.
-#' @param points A matrix of points, one per row and three columns. Where
-#'   `type` is `"voxel"` (the default convention for `fromVoxel()`'s input and
-#'   `toVoxel()`'s output), these are one-based, as for `x[i, j, k]`.
+#' @param tolerance Numerical tolerance for comparing world transforms.
+#' @param points A matrix of points, one per row and one to three columns.
+#'   Missing columns are taken to be zero. Where `type` is `"voxel"` (the
+#'   default convention for `fromVoxel()`'s input and `toVoxel()`'s output),
+#'   these are one-based, as for `x[i, j, k]`.
 #' @param type The coordinate convention of `points`: `"voxel"` (one-based),
 #'   `"scaled"` (millimetres from the one-based origin, ignoring rotation) or
 #'   `"world"` (fully transformed).
@@ -42,13 +58,24 @@
 #'   probability proportional to proximity.
 #' @param bounds Optional image extents, used only by probabilistic rounding to
 #'   avoid selecting a location beyond the end of the image.
-#' @return `isImage()` returns a Boolean value indicating whether its argument
-#'   is one of the package's image types. `spatial()` returns the index of the
-#'   last spatial dimension. `voxelSize()` returns a vector of sizes in each
-#'   spatial dimension. `worldTransform()` returns a numeric affine transform
-#'   matrix. `toVoxel()` and `fromVoxel()` return matrices of transformed
-#'   points, one per row. The assignment functions are called for their
-#'   side-effects.
+#' @return `imageGeometry()` and `geometry()` return an object of S7 class
+#'   `imageGeometry`, with properties `dims`, `voxelSize`, `orientation` (the
+#'   rigid part of the world transform) and `unit`. `isImage()` and
+#'   `isImageGeometry()` return a Boolean value indicating whether their
+#'   argument is one of the package's image types, or a geometry,
+#'   respectively. `spatial()` returns the number of spatial dimensions.
+#'   `voxelSize()` returns a vector of sizes in each spatial dimension.
+#'   `worldTransform()` returns a numeric affine transform matrix. `centre()`
+#'   returns the world coordinates of the centre of the grid, always as three
+#'   values; `center()` is an alias. `extent()` returns the physical size of
+#'   the grid along each spatial axis. `sameGeometry()` returns a Boolean
+#'   value, which is `TRUE` if the two grids are the same size and are placed
+#'   identically in world space, up to `tolerance`; units are compared only if
+#'   both are known.
+#'   `toVoxel()` and `fromVoxel()` return matrices of transformed points, one
+#'   per row. Voxel coordinates have as many columns as `points`, and world
+#'   or scaled coordinates always have three. The assignment functions are
+#'   called for their side-effects.
 #' @name geometry
 NULL
 
@@ -56,54 +83,253 @@ NULL
 
 #' @rdname geometry
 #' @export
+imageGeometry <- S7::new_class("imageGeometry",
+    properties = list(
+        dims = S7::class_integer,
+        voxelSize = S7::class_double,
+        orientation = S7::class_double,
+        unit = S7::class_character
+    ),
+    validator = function (self) {
+        if (anyNA(self@dims) || any(self@dims < 0L))
+            return("@dims must not be missing or negative")
+
+        if (length(self@voxelSize) != length(self@dims))
+            return(paste0("@voxelSize must have one element per spatial dimension (", length(self@dims), ")"))
+        if (anyNA(self@voxelSize))
+            return("@voxelSize must not be missing")
+        if (any(self@voxelSize <= 0))
+            return("@voxelSize must be strictly positive")
+
+        if (!identical(dim(self@orientation), c(4L, 4L)))
+            return("@orientation must be a 4x4 matrix")
+        if (anyNA(self@orientation))
+            return("@orientation must not contain missing values")
+        if (!isTRUE(all.equal(self@orientation[4, ], c(0, 0, 0, 1))))
+            return("@orientation must be affine, with a final row of (0, 0, 0, 1)")
+        block <- self@orientation[1:3, 1:3, drop = FALSE]
+        if (max(abs(crossprod(block) - diag(3))) > orthogonalityTolerance)
+            return("@orientation must be rigid: a rotation or reflection, with no scale or shear")
+
+        if (length(self@unit) != 1L || is.na(self@unit))
+            return("@unit must be a single value")
+
+        NULL
+    },
+    constructor = function (dims = integer(0), voxelSize = NULL, worldTransform = NULL, unit = NULL)
+    {
+        dims <- as.integer(dims)
+        decomposed <- if (is.null(worldTransform)) NULL
+                      else decomposeTransform(validateXform(worldTransform), length(dims))
+
+        S7::new_object(S7::S7_object(),
+            dims = dims,
+            voxelSize = as.double(voxelSize %||% decomposed$voxelSize %||% rep(1, length(dims))),
+            orientation = decomposed$orientation %||% diag(4),
+            unit = as.character(unit %||% "unknown"))
+    })
+
+S7::S4_register(imageGeometry)
+
+S7::method(print, imageGeometry) <- function (x, ...)
+{
+    cat(sprintf("Image geometry: %s\n", if (length(x@dims) == 0L) "no spatial dimensions"
+                                        else paste(x@dims, collapse = " x ")))
+    printGeometry(x)
+    invisible(x)
+}
+
+## The lines describing a grid, shared by the print methods of every image
+printGeometry <- function (geometry)
+{
+    if (length(geometry@dims) > 0L)
+    {
+        cat(sprintf("  Spatial dimensions : %s\n", paste(geometry@dims, collapse = " x ")))
+        cat(sprintf("  Voxel size         : %s %s\n", paste(signif(geometry@voxelSize, 4), collapse = " x "),
+                    if (geometry@unit == "unknown") "(unit unknown)" else geometry@unit))
+    }
+}
+
+#' @rdname geometry
+#' @export
+isImageGeometry <- function (x) S7::S7_inherits(x, imageGeometry)
+
+#' @rdname geometry
+#' @export
 isImage <- function (x) isDenseImage(x) || isSparseImage(x) || isPackedImage(x)
 
 #' @rdname geometry
 #' @export
-spatial <- function (x) attr(x, "spatial") %||% min(3L, length(dim(x)))
-
-#' @rdname geometry
-#' @export
-voxelSize <- function (x) attr(x, "voxelSize") %||% rep(1, spatial(x))
-
-#' @rdname geometry
-#' @export
-`voxelSize<-` <- function (x, value)
+geometry <- function (x)
 {
-    value <- as.double(value)
+    if (isImageGeometry(x))
+        return(x)
+    if (isImage(x))
+        return(x@geometry)
+    if (!is.atomic(x))
+        stop("Cannot find a geometry for an object of class ", class(x)[1L])
+
+    dims <- dim(x) %||% length(x)
+    imageGeometry(dims[seq_len(min(3L, length(dims)))])
+}
+
+#' @rdname geometry
+#' @export
+`geometry<-` <- function (x, value)
+{
+    value <- geometry(value)
+    if (isImageGeometry(x))
+        return(value)
     if (!isImage(x))
         x <- denseImage(x)
-    x@voxelSize <- value
+    x@geometry <- value
     x
 }
+
+## Replaces some properties of a geometry, or of the geometry an image holds,
+## all at once, so that validation sees only the final state. Whatever image
+## class x already is is preserved, so setters never densify as a side effect;
+## anything that is not yet an image becomes a dense one
+updateGeometry <- function (x, ...)
+{
+    if (isImageGeometry(x))
+        return(S7::set_props(x, ...))
+    if (!isImage(x))
+        x <- denseImage(x)
+    x@geometry <- S7::set_props(x@geometry, ...)
+    x
+}
+
+## Builds the geometry of an image under construction. Explicit arguments win,
+## then a value implied by another explicit argument (a worldTransform implies
+## both orientation and voxel size), then the geometry of `from`, then defaults
+resolveGeometry <- function (dims, spatial = NULL, voxelSize = NULL, worldTransform = NULL,
+                             unit = NULL, from = NULL)
+{
+    nDims <- length(dims)
+    if (!is.null(from))
+        from <- geometry(from)
+
+    spatial <- as.integer(spatial %||% if (is.null(from)) min(3L, nDims) else length(from@dims))
+    if (length(spatial) != 1L || is.na(spatial))
+        stop("The number of spatial dimensions must be a single value")
+    if (spatial < 0L || spatial > nDims)
+        stop("The number of spatial dimensions must be between 0 and ", nDims)
+    spatialDims <- as.integer(dims[seq_len(spatial)])
+
+    if (is.null(from))
+        return(imageGeometry(spatialDims, voxelSize, worldTransform, unit))
+
+    if (!identical(from@dims, spatialDims))
+        stop("The geometry given is for a grid of ", formatDims(from@dims),
+             ", but the image's spatial dimensions are ", formatDims(spatialDims))
+
+    changes <- list()
+    if (!is.null(worldTransform))
+        changes <- decomposeTransform(validateXform(worldTransform), spatial)
+    if (!is.null(voxelSize))
+        changes$voxelSize <- as.double(voxelSize)
+    if (!is.null(unit))
+        changes$unit <- as.character(unit)
+    do.call(S7::set_props, c(list(from), changes))
+}
+
+## Removes spatial axes from a geometry, keeping the rest in order. A location
+## in the result stands for a whole line or plane across the dropped axes, so
+## it is placed at the centre of that line or plane. The columns of the rigid
+## block are reordered rather than removed, with the dropped axes filling the
+## slots beyond the retained ones, so that the block stays a rotation or
+## reflection and those axes keep the unit scale decomposeTransform() expects
+dropAxes <- function (geometry, axes)
+{
+    n <- length(geometry@dims)
+    keep <- setdiff(seq_len(n), axes)
+
+    xform <- worldTransform(geometry)
+    orientation <- geometry@orientation
+    for (axis in axes[axes <= 3L])
+        orientation[1:3, 4] <- orientation[1:3, 4] + xform[1:3, axis] * (geometry@dims[axis] - 1) / 2
+
+    columns <- c(keep, axes, setdiff(1:3, c(keep, axes)))
+    orientation[1:3, 1:3] <- orientation[1:3, columns[columns <= 3L], drop = FALSE]
+
+    S7::set_props(geometry, dims = geometry@dims[keep], voxelSize = geometry@voxelSize[keep],
+                  orientation = orientation)
+}
+
+formatDims <- function (dims)
+    if (length(dims) == 0L) "no dimensions" else paste(dims, collapse = " x ")
+
+#' @rdname geometry
+#' @export
+spatial <- function (x) length(geometry(x)@dims)
+
+#' @rdname geometry
+#' @export
+voxelSize <- function (x) geometry(x)@voxelSize
+
+#' @rdname geometry
+#' @export
+`voxelSize<-` <- function (x, value) updateGeometry(x, voxelSize = as.double(value))
 
 #' @rdname geometry
 #' @export
 worldTransform <- function (x)
 {
-    ## isImage() is checked first, and matrix-ness second, because a
-    ## two-dimensional image is itself a matrix: without this order such an
-    ## image would be misread as a raw transform to validate rather than an
-    ## image whose transform is wanted
-    if (isImage(x))
-        composeTransform(attr(x, "orientation") %||% diag(4), voxelSize(x))
-    else if (is.matrix(x))
-        validateXform(x)
+    ## Images and geometries are checked first, and matrix-ness second,
+    ## because a two-dimensional image is itself a matrix: without this order
+    ## such an image would be misread as a raw transform to validate rather
+    ## than an image whose transform is wanted
+    if (isImage(x) || isImageGeometry(x) || !is.matrix(x))
+    {
+        geometry <- geometry(x)
+        composeTransform(geometry@orientation, geometry@voxelSize)
+    }
     else
-        composeTransform(diag(4), voxelSize(x))
+        validateXform(x)
 }
 
 #' @rdname geometry
 #' @export
 `worldTransform<-` <- function (x, value)
 {
-    ## As for voxelSize<-(): preserve whatever image class x already is
-    if (!isImage(x))
-        x <- denseImage(x)
-    decomposed <- decomposeTransform(validateXform(value), x@spatial)
-    x@orientation <- decomposed$orientation
-    x@voxelSize <- decomposed$voxelSize
-    x
+    decomposed <- decomposeTransform(validateXform(value), spatial(x))
+    updateGeometry(x, orientation = decomposed$orientation, voxelSize = decomposed$voxelSize)
+}
+
+#' @rdname geometry
+#' @export
+centre <- function (x)
+{
+    geometry <- geometry(x)
+    n <- min(3L, length(geometry@dims))
+    voxel <- c((geometry@dims[seq_len(n)] - 1) / 2, rep(0, 3L - n))
+    as.vector(worldTransform(geometry) %*% c(voxel, 1))[1:3]
+}
+
+#' @rdname geometry
+#' @export
+center <- centre
+
+#' @rdname geometry
+#' @export
+extent <- function (x)
+{
+    geometry <- geometry(x)
+    geometry@dims * geometry@voxelSize
+}
+
+#' @rdname geometry
+#' @export
+sameGeometry <- function (x, y, tolerance = sqrt(.Machine$double.eps))
+{
+    x <- geometry(x)
+    y <- geometry(y)
+    if (!identical(x@dims, y@dims))
+        return(FALSE)
+    if (x@unit != "unknown" && y@unit != "unknown" && x@unit != y@unit)
+        return(FALSE)
+    isTRUE(all.equal(worldTransform(x), worldTransform(y), tolerance = tolerance, check.attributes = FALSE))
 }
 
 validateXform <- function (value)
@@ -185,14 +411,14 @@ toVoxel <- function (points, x, type = "world", round = "none", bounds = NULL)
     result <- pointsToVoxel(points, worldTransform(x), voxelSize(x), type)
     if (!identical(round, "none"))
     {
-        if (is.null(bounds) && !is.matrix(x))
-            bounds <- as.double(dim(x)[seq_len(min(3L, spatial(x)))])
+        if (is.null(bounds) && (isImage(x) || isImageGeometry(x) || !is.matrix(x)))
+            bounds <- as.double(geometry(x)@dims[seq_len(min(3L, spatial(x)))])
         result <- roundPoints(result, round, bounds)
     }
     ## Standard one-based indexing for R
     if (!identical(type, "voxel"))
         result <- result + 1
-    result
+    result[, seq_len(attr(points, "columns")), drop = FALSE]
 }
 
 #' @rdname geometry
@@ -200,21 +426,37 @@ toVoxel <- function (points, x, type = "world", round = "none", bounds = NULL)
 fromVoxel <- function (points, x, type = "world")
 {
     points <- asPointMatrix(points)
+    columns <- attr(points, "columns")
     ## The inverse of toVoxel()'s shift: points arrive one-based and are
     ## brought back to zero-based before reaching the affine, unless they are
-    ## staying in voxel space, in which case there is nothing to shift
+    ## staying in voxel space, in which case there is nothing to shift. Only
+    ## the columns supplied are shifted, so padding stays at the origin
     if (!identical(type, "voxel"))
-        points <- points - 1
-    pointsFromVoxel(points, worldTransform(x), voxelSize(x), type)
+        points[, seq_len(columns)] <- points[, seq_len(columns)] - 1
+    result <- pointsFromVoxel(points, worldTransform(x), voxelSize(x), type)
+    ## World space is always three-dimensional, even for a two-dimensional
+    ## grid, which may be placed obliquely within it
+    if (identical(type, "voxel"))
+        result <- result[, seq_len(columns), drop = FALSE]
+    result
 }
 
+## Points arrive as a vector (one point) or a matrix with one point per row.
+## Points with fewer than three dimensions are padded with zeros, so that
+## every dimensionality shares one code path, and the number supplied is remembered so that
+## results can be trimmed back to match
 asPointMatrix <- function (points)
 {
     if (is.null(dim(points)))
         points <- matrix(points, nrow = 1L)
     points <- as.matrix(points)
     storage.mode(points) <- "double"
-    if (ncol(points) != 3L)
-        stop("Points must be given as a matrix with three columns")
+    columns <- ncol(points)
+    if (columns < 1L || columns > 3L)
+        stop("Points must be given as a matrix with one to three columns")
+    if (columns < 3L)
+        points <- cbind(points, matrix(0, nrow(points), 3L - columns))
+    dimnames(points) <- NULL
+    attr(points, "columns") <- columns
     points
 }
