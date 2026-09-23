@@ -41,12 +41,17 @@
 #'   of `(done, total)`.
 #' @param axis For `lineApply()`, the axis lines run along; for `sliceApply()`,
 #'   the axis slices cut across.
-#' @param mask For `voxelApply()`, a logical array over the spatial dimensions,
-#'   a sparse image whose mask is to be used, or `NULL` for none. Locations
-#'   outside it are not visited at all.
+#' @param mask For `voxelApply()`, a logical or numeric array over the
+#'   spatial dimensions, an image, or `NULL` for none; see [asMaskVector()].
+#'   Locations outside it are not visited at all.
 #' @param fill The value given to locations outside `mask`.
-#' @return For `imapply()`, as [base::apply()]. For `voxelApply()`, an image
-#'   when the function returns a single value per location, otherwise an array.
+#' @return For `imapply()`, as [base::apply()]. For `voxelApply()`,
+#'   `lineApply()` and `sliceApply()` applied to an image, a dense image when
+#'   the function returns a single value per location, line or slice,
+#'   respectively, and otherwise as for `imapply()`. The geometry of the
+#'   result is that of `x` with the axes traversed removed, each remaining
+#'   location being placed at the centre of the line or slice it summarises,
+#'   so [centre()] is unchanged. A plain array in gives a plain array out.
 #' @name imapply
 NULL
 
@@ -223,15 +228,23 @@ voxelApply <- function (x, fun, ..., mask = NULL, fill = 0, simplify = TRUE,
                                 threads = threads, progress = progress))
 
     result <- imapply(x, seq_len(nSpatial), fun, ..., simplify = simplify, threads = threads, progress = progress)
+    resultImage(result, x, simplify, function (geometry) geometry)
+}
 
-    ## A single value per location is itself an image, and inherits the
-    ## geometry of the input, whichever way that input was stored
-    if (isImage(x) && simplify && is.atomic(result) &&
-        typeof(result) %in% c("logical", "integer", "double", "complex") &&
-        length(result) == prod(dims[seq_len(nSpatial)]))
-        result <- denseImage(array(result, dims[seq_len(nSpatial)]), template = x, spatial = nSpatial)
+## A single value per location, line or slice is itself an image, whichever
+## way the input was stored. Its geometry is the input's with the axes that
+## were traversed removed, which `reduce` does; it is only called when the
+## result really does have that shape. Anything else is returned untouched
+resultImage <- function (result, x, simplify, reduce)
+{
+    if (!isImage(x) || !simplify || !is.atomic(result) ||
+        !typeof(result) %in% c("logical", "integer", "double", "complex"))
+        return(result)
 
-    result
+    geometry <- reduce(geometry(x))
+    if (length(result) != prod(geometry@dims))
+        return(result)
+    denseImage(array(result, geometry@dims), geometry = geometry)
 }
 
 #' @rdname imapply
@@ -248,7 +261,8 @@ lineApply <- function (x, fun, ..., axis = 1L, simplify = TRUE, threads = NULL, 
     ## running along the axis, together with the values at each of its
     ## locations. Lines never overlap, which is what makes this decomposition
     ## safe to parallelise
-    imapply(x, seq_len(nSpatial)[-axis], fun, ..., simplify = simplify, threads = threads, progress = progress)
+    result <- imapply(x, seq_len(nSpatial)[-axis], fun, ..., simplify = simplify, threads = threads, progress = progress)
+    resultImage(result, x, simplify, function (geometry) dropAxes(geometry, axis))
 }
 
 checkAxis <- function (axis, nSpatial)
@@ -272,7 +286,8 @@ sliceApply <- function (x, fun, ..., axis = 3L, simplify = TRUE, threads = NULL,
 
     ## Only the axis is retained, so fun sees the plane cut across it, together
     ## with the values at each of its locations
-    imapply(x, axis, fun, ..., simplify = simplify, threads = threads, progress = progress)
+    result <- imapply(x, axis, fun, ..., simplify = simplify, threads = threads, progress = progress)
+    resultImage(result, x, simplify, function (geometry) dropAxes(geometry, seq_len(nSpatial)[-axis]))
 }
 
 
@@ -318,28 +333,6 @@ maskedVoxelApply <- function (x, fun, ..., mask, fill, simplify, threads, progre
     scatterMasked(result, index, spatialDims, length(index), fill, x, nSpatial)
 }
 
-## A mask may be given as a logical array, a sparse image whose own mask is
-## wanted, or anything numeric where non-zero means selected
-asMaskVector <- function (mask, spatialDims)
-{
-    if (isSparseImage(mask))
-        mask <- mask(mask)
-
-    if (is.logical(mask))
-        selected <- as.vector(mask)
-    else if (is.numeric(mask))
-        selected <- as.vector(mask) != 0
-    else
-        stop("Mask must be a logical array, a numeric array, or a sparse image")
-
-    if (anyNA(selected))
-        stop("Mask must not contain missing values")
-    if (length(selected) != prod(spatialDims))
-        stop("Mask must have one element per spatial location (", prod(spatialDims), ")")
-
-    selected
-}
-
 ## The selected values, and the margin to apply over. Both layouts hand the
 ## function the same vector; they differ only in which is cheaper to produce
 maskedInput <- function (x, selected, index, nLocations, dims, nSpatial)
@@ -369,7 +362,7 @@ scatterMasked <- function (result, index, spatialDims, nSelected, fill, x, nSpat
     {
         dim(full) <- spatialDims
         if (isImage(x) && typeof(full) %in% c("logical", "integer", "double", "complex"))
-            return(denseImage(full, template = x, spatial = nSpatial))
+            return(denseImage(full, geometry = x))
         return(full)
     }
 
