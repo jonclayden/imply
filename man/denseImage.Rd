@@ -11,9 +11,8 @@ denseImage(
   voxelSize = NULL,
   worldTransform = NULL,
   spatial = NULL,
-  spaceUnit = NULL,
-  timeUnit = NULL,
-  template = NULL
+  unit = NULL,
+  geometry = NULL
 )
 
 isDenseImage(x)
@@ -31,12 +30,15 @@ coordinates. Decomposed into rotation/translation and voxel size on
 assignment; see \link{geometry}.}
 
 \item{spatial}{The number of leading dimensions that index location rather
-than the value held at each location. Defaults to three, or the
-dimensionality if that is smaller.}
+than the value held at each location. Defaults to the number the geometry
+has, if one is given, or otherwise to three, or the dimensionality if that
+is smaller.}
 
-\item{spaceUnit, timeUnit}{Units of measurement.}
+\item{unit}{The unit of measurement of voxel size and world coordinates.}
 
-\item{template}{An image to take unspecified geometry from.}
+\item{geometry}{An \link[=geometry]{imageGeometry}, or an image to take one from, giving
+whatever is not specified explicitly. Its grid must match the leading
+dimensions of the data.}
 
 \item{x}{An image.}
 
@@ -44,7 +46,7 @@ dimensionality if that is smaller.}
 }
 \value{
 An object of S7 class \code{denseImage} representing a dense image, with
-properties corresponding to the arguments listed above.
+a \code{geometry} property holding its \link[=geometry]{imageGeometry}.
 }
 \description{
 A dense image is an array carrying image geometry alongside it. It is an S7

@@ -16,9 +16,8 @@ packedImage(
   spatial = NULL,
   voxelSize = NULL,
   worldTransform = NULL,
-  spaceUnit = NULL,
-  timeUnit = NULL,
-  template = NULL
+  unit = NULL,
+  geometry = NULL
 )
 
 isPackedImage(x)
@@ -30,13 +29,13 @@ storageType(x)
 \arguments{
 \item{values}{A raw vector holding the packed values.}
 
-\item{dims, spatial, voxelSize, worldTransform, spaceUnit, timeUnit}{Image
-geometry, as for \code{\link[=denseImage]{denseImage()}}.}
+\item{dims}{The full dimensions of the image.}
 
 \item{slope, intercept}{Scaling applied to stored values. Chosen
 automatically when not given.}
 
-\item{template}{An image to take unspecified geometry from.}
+\item{spatial, voxelSize, worldTransform, unit, geometry}{Image geometry, as
+for \code{\link[=denseImage]{denseImage()}}.}
 
 \item{x}{An image or array.}
 

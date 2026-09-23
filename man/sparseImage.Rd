@@ -16,9 +16,8 @@ sparseImage(
   spatial = NULL,
   voxelSize = NULL,
   worldTransform = NULL,
-  spaceUnit = NULL,
-  timeUnit = NULL,
-  template = NULL
+  unit = NULL,
+  geometry = NULL
 )
 
 isSparseImage(x)
@@ -36,10 +35,10 @@ mask(x)
 
 \item{values}{Packed values, in location order.}
 
-\item{dim, spatial, voxelSize, worldTransform, spaceUnit, timeUnit}{Image
-geometry, as for \code{\link[=denseImage]{denseImage()}}.}
+\item{dim}{The full dimensions of the image.}
 
-\item{template}{An image to take unspecified geometry from.}
+\item{spatial, voxelSize, worldTransform, unit, geometry}{Image geometry, as
+for \code{\link[=denseImage]{denseImage()}}.}
 
 \item{x}{An image or array.}
 

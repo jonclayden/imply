@@ -2,17 +2,37 @@
 % Please edit documentation in R/geometry.R
 \name{geometry}
 \alias{geometry}
+\alias{imageGeometry}
+\alias{isImageGeometry}
 \alias{isImage}
+\alias{geometry<-}
 \alias{spatial}
 \alias{voxelSize}
 \alias{voxelSize<-}
 \alias{worldTransform}
 \alias{worldTransform<-}
+\alias{centre}
+\alias{center}
+\alias{extent}
+\alias{sameGeometry}
 \alias{toVoxel}
 \alias{fromVoxel}
 \title{Image geometry}
 \usage{
+imageGeometry(
+  dims = integer(0),
+  voxelSize = NULL,
+  worldTransform = NULL,
+  unit = NULL
+)
+
+isImageGeometry(x)
+
 isImage(x)
+
+geometry(x)
+
+geometry(x) <- value
 
 spatial(x)
 
@@ -24,18 +44,42 @@ worldTransform(x)
 
 worldTransform(x) <- value
 
+centre(x)
+
+center(x)
+
+extent(x)
+
+sameGeometry(x, y, tolerance = sqrt(.Machine$double.eps))
+
 toVoxel(points, x, type = "world", round = "none", bounds = NULL)
 
 fromVoxel(points, x, type = "world")
 }
 \arguments{
-\item{x}{An image, or for \code{worldTransform} either an image or a 4x4 matrix.}
+\item{dims}{The extent of the grid, one per spatial dimension.}
+
+\item{voxelSize}{Voxel size, one per spatial dimension.}
+
+\item{worldTransform}{A 4x4 affine transform mapping (zero-based) voxel to
+world coordinates, from which the voxel size is also taken unless it is
+given separately.}
+
+\item{unit}{The unit of measurement of voxel size and world coordinates.}
+
+\item{x, y}{Images or geometries. Anything else with a dimension attribute is
+treated as having unit voxels at the origin, with the leading three
+dimensions (or all of them, if fewer) spatial. \code{worldTransform()} also
+accepts a bare 4x4 matrix, which is validated and returned.}
 
 \item{value}{A replacement value.}
 
-\item{points}{A matrix of points, one per row and three columns. Where
-\code{type} is \code{"voxel"} (the default convention for \code{fromVoxel()}'s input and
-\code{toVoxel()}'s output), these are one-based, as for \code{x[i, j, k]}.}
+\item{tolerance}{Numerical tolerance for comparing world transforms.}
+
+\item{points}{A matrix of points, one per row and one to three columns.
+Missing columns are taken to be zero. Where \code{type} is \code{"voxel"} (the
+default convention for \code{fromVoxel()}'s input and \code{toVoxel()}'s output),
+these are one-based, as for \code{x[i, j, k]}.}
 
 \item{type}{The coordinate convention of \code{points}: \code{"voxel"} (one-based),
 \code{"scaled"} (millimetres from the one-based origin, ignoring rotation) or
@@ -49,17 +93,33 @@ probability proportional to proximity.}
 avoid selecting a location beyond the end of the image.}
 }
 \value{
-\code{isImage()} returns a Boolean value indicating whether its argument
-is one of the package's image types. \code{spatial()} returns the index of the
-last spatial dimension. \code{voxelSize()} returns a vector of sizes in each
-spatial dimension. \code{worldTransform()} returns a numeric affine transform
-matrix. \code{toVoxel()} and \code{fromVoxel()} return matrices of transformed
-points, one per row. The assignment functions are called for their
-side-effects.
+\code{imageGeometry()} and \code{geometry()} return an object of S7 class
+\code{imageGeometry}, with properties \code{dims}, \code{voxelSize}, \code{orientation} (the
+rigid part of the world transform) and \code{unit}. \code{isImage()} and
+\code{isImageGeometry()} return a Boolean value indicating whether their
+argument is one of the package's image types, or a geometry,
+respectively. \code{spatial()} returns the number of spatial dimensions.
+\code{voxelSize()} returns a vector of sizes in each spatial dimension.
+\code{worldTransform()} returns a numeric affine transform matrix. \code{centre()}
+returns the world coordinates of the centre of the grid, always as three
+values; \code{center()} is an alias. \code{extent()} returns the physical size of
+the grid along each spatial axis. \code{sameGeometry()} returns a Boolean
+value, which is \code{TRUE} if the two grids are the same size and are placed
+identically in world space, up to \code{tolerance}; units are compared only if
+both are known.
+\code{toVoxel()} and \code{fromVoxel()} return matrices of transformed points, one
+per row. Voxel coordinates have as many columns as \code{points}, and world
+or scaled coordinates always have three. The assignment functions are
+called for their side-effects.
 }
 \description{
-Accessors for the geometry of an image: the number of spatial dimensions,
-the voxel size and the placement of the image in world space.
+An image geometry describes the spatial grid an image is sampled on,
+without any of its data: the extent of the grid, the voxel size, the
+placement of the grid in world space and the unit of measurement. Every
+image holds one, and any of the functions here may be given either an image
+or a bare geometry. A bare geometry is useful in its own right, to describe
+a space that no image has been created in yet, such as the target grid of a
+resampling.
 }
 \details{
 These are deliberately free of any dependency on a file format, and of any
