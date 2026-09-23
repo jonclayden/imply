@@ -108,7 +108,7 @@ marginRunner <- function (x, margin, wrapped, callNames, simplify)
                                   report, every))
     if (isSparseImage(x))
         return(function (from, to, report, every)
-            applyOverMarginSparse(x@mask, x@values, x@dims, x@spatial, margin, wrapped,
+            applyOverMarginSparse(x@mask, x@values, x@dims, spatial(x), margin, wrapped,
                                   callNames, simplify, from, to, report, every))
 
     function (from, to, report, every)

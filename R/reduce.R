@@ -68,7 +68,7 @@ imreduce <- function (x, margin, what, na.rm = FALSE, threads = NULL)
         reduceOverMarginPacked(x@values, x@storageType, x@dims, margin, what,
                                x@slope, x@intercept, na.rm, nThreads)
     else if (isSparseImage(x))
-        reduceOverMarginSparse(x@mask, x@values, x@dims, x@spatial, margin, what, na.rm, nThreads)
+        reduceOverMarginSparse(x@mask, x@values, x@dims, spatial(x), margin, what, na.rm, nThreads)
     else
         reduceOverMargin(unclassArray(x), margin, what, na.rm, nThreads)
 
