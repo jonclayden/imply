@@ -93,7 +93,7 @@ asDense <- function (x, ...)
     else if (isPackedImage(x))
         return(denseImage(as.array(x), geometry = x@geometry))
     else if (isSparseImage(x))
-        return(denseImage(sparseToDense(x@mask, x@values, x@dims, spatial(x)), geometry = x@geometry))
+        return(denseImage(as.array(x), geometry = x@geometry))
     else
         return(denseImage(x, ...))
 }

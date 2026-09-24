@@ -22,6 +22,10 @@
 #' @param dim The full dimensions of the image.
 #' @param spatial,voxelSize,worldTransform,unit,geometry Image geometry, as
 #'   for [denseImage()].
+#' @param layout How the image's axes map onto the stored order of locations,
+#'   as described for [storageLayout()]. For a sparse image it may only
+#'   reorder and reverse the spatial axes among themselves; the values held at
+#'   each location are always stored in order. The default is the identity.
 #' @return An object of S7 class `sparseImage` representing a sparse image,
 #'   with properties corresponding to the arguments listed above.
 #' @name sparseImage
@@ -34,14 +38,22 @@ sparseImage <- S7::new_class("sparseImage",
         mask = S7::class_raw,
         values = S7::class_atomic,
         dims = S7::class_integer,
+        layout = S7::class_integer,
         geometry = imageGeometry
     ),
     validator = function (self) {
         if (anyNA(self@dims) || any(self@dims < 0L))
             return("@dims must not be missing or negative")
-        mismatch <- geometryMismatch(self@geometry, self@dims)
+        mismatch <- geometryMismatch(self@geometry, self@dims) %||% checkLayout(self@layout, length(self@dims))
         if (!is.null(mismatch))
             return(mismatch)
+
+        ## The accessor splits a stored index into a location and an element,
+        ## which only works while the spatial axes stay in front
+        nSpatial <- spatial(self)
+        if (any(abs(self@layout[seq_len(nSpatial)]) > nSpatial) ||
+            !isIdentityLayout(self@layout[-seq_len(nSpatial)] - nSpatial))
+            return("@layout of a sparse image may only reorder its spatial axes among themselves")
 
         if (!typeof(self@values) %in% c("logical", "integer", "double", "complex"))
             return("@values must be logical, integer, double or complex")
@@ -56,7 +68,7 @@ sparseImage <- S7::new_class("sparseImage",
         NULL
     },
     constructor = function (mask, values, dim, spatial = NULL, voxelSize = NULL, worldTransform = NULL,
-                            unit = NULL, geometry = NULL)
+                            unit = NULL, geometry = NULL, layout = NULL)
     {
         dim <- as.integer(dim)
         nDims <- length(dim)
@@ -78,6 +90,7 @@ sparseImage <- S7::new_class("sparseImage",
             mask = mask,
             values = values,
             dims = dim,
+            layout = as.integer(layout %||% seq_along(dim)),
             geometry = geometry)
     })
 
@@ -102,8 +115,14 @@ asSparse <- function (x, ...)
 #' `maskedMatrix()` returns the stored values, with one column per stored
 #' location, which is the data matrix most voxelwise analysis wants: nothing
 #' outside the mask is present at all, and the values at one location are
-#' contiguous. Packing is voxel-major, so this is the shape the values are
-#' already held in and returning them costs nothing.
+#' contiguous. The columns are in the order of `which(mask(x))`. Packing is
+#' voxel-major, so this is the shape the values are already held in, and
+#' returning them costs nothing unless the image has been reoriented, in which
+#' case the columns are reordered to match, which copies.
+#'
+#' `storedValues()` returns the values exactly as stored, never copying, along
+#' with the location of each column as a linear index into the image's own
+#' spatial grid. The two differ only for a reoriented image.
 #'
 #' @rdname sparseImage
 #' @export
@@ -112,6 +131,39 @@ maskedMatrix <- function (x)
     if (!isSparseImage(x))
         stop("Only a sparse image has packed values")
 
+    if (!isIdentityLayout(x@layout))
+    {
+        stored <- storedValues(x)
+        return(stored$values[, order(stored$locations), drop = FALSE])
+    }
+
+    storedMatrix(x)
+}
+
+#' @rdname sparseImage
+#' @export
+storedValues <- function (x)
+{
+    if (!isSparseImage(x))
+        stop("Only a sparse image has packed values")
+
+    present <- which(maskToLogical(x@mask, locationCount(x)))
+    locations <- if (isIdentityLayout(x@layout)) present else {
+        ## Where each view location is stored, inverted to find where each
+        ## stored location sits in the view
+        nSpatial <- spatial(x)
+        viewToStored <- viewIndices(seq_len(locationCount(x)), x@dims[seq_len(nSpatial)], x@layout[seq_len(nSpatial)])
+        storedToView <- integer(length(viewToStored))
+        storedToView[viewToStored] <- seq_along(viewToStored)
+        storedToView[present]
+    }
+
+    list(values = storedMatrix(x), locations = locations)
+}
+
+## The values as held, shaped with one column per stored location
+storedMatrix <- function (x)
+{
     values <- x@values
     elements <- elementCount(x)
     stored <- maskCount(x@mask, locationCount(x))
@@ -140,7 +192,12 @@ mask <- function (x)
 {
     if (!isSparseImage(x))
         stop("Only a sparse image carries a mask")
-    array(maskToLogical(x@mask, locationCount(x)), x@geometry@dims)
+    present <- maskToLogical(x@mask, locationCount(x))
+    nSpatial <- spatial(x)
+    if (isIdentityLayout(x@layout))
+        array(present, x@geometry@dims)
+    else
+        viewGather(present, x@geometry@dims, x@layout[seq_len(nSpatial)])
 }
 
 #' Masks over spatial locations
@@ -187,7 +244,7 @@ elementCount <- function (x) prod(x@dims[-seq_len(spatial(x))])
 S7::method(dim, sparseImage) <- function (x) x@dims
 
 S7::method(as.array, sparseImage) <- function (x, ...)
-    sparseToDense(x@mask, x@values, x@dims, spatial(x))
+    sparseToDense(x@mask, x@values, x@dims, spatial(x), layoutArg(x))
 
 S7::method(length, sparseImage) <- function (x) prod(x@dims)
 
@@ -202,6 +259,7 @@ S7::method(print, sparseImage) <- function (x, ...)
     cat(sprintf("  Locations stored   : %s of %s (%.1f%% sparse)\n",
                 format(present, big.mark = ","), format(locationCount(x), big.mark = ","),
                 100 * sparseness(x)))
+    printLayout(x@layout)
 
     invisible(x)
 }
@@ -227,7 +285,7 @@ S7::method(`[`, sparseImage) <- function (x, ..., drop = TRUE)
             i <- flattenIndices(array(0L, x@dims), i)
         else if (is.logical(i))
             i <- which(i)
-        return(sparseElements(x@mask, x@values, x@dims, spatial(x), as.double(i)))
+        return(sparseElements(x@mask, x@values, x@dims, spatial(x), storageIndices(x, i)))
     }
 
     ## Full n-dimensional indexing is rare enough on a sparse image that

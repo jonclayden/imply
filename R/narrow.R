@@ -27,6 +27,9 @@
 #' @param dims The full dimensions of the image.
 #' @param spatial,voxelSize,worldTransform,unit,geometry Image geometry, as
 #'   for [denseImage()].
+#' @param layout How the image's axes map onto the order of `values`, as
+#'   described for [storageLayout()]. The default is the identity, meaning
+#'   that `values` are in the image's own axis order.
 #' @param ... Further arguments to `denseImage()`.
 #' @return An object of S7 class `packedImage` representing an image using a
 #'   narrow, packed data representation, with properties corresponding to the
@@ -47,6 +50,7 @@ packedImage <- S7::new_class("packedImage",
         slope = S7::class_double,
         intercept = S7::class_double,
         dims = S7::class_integer,
+        layout = S7::class_integer,
         geometry = imageGeometry
     ),
     validator = function (self) {
@@ -59,7 +63,7 @@ packedImage <- S7::new_class("packedImage",
 
         if (anyNA(self@dims) || any(self@dims < 0L))
             return("@dims must not be missing or negative")
-        mismatch <- geometryMismatch(self@geometry, self@dims)
+        mismatch <- geometryMismatch(self@geometry, self@dims) %||% checkLayout(self@layout, length(self@dims))
         if (!is.null(mismatch))
             return(mismatch)
 
@@ -70,7 +74,8 @@ packedImage <- S7::new_class("packedImage",
         NULL
     },
     constructor = function (values, storageType, dims, slope = 1, intercept = 0, spatial = NULL,
-                            voxelSize = NULL, worldTransform = NULL, unit = NULL, geometry = NULL)
+                            voxelSize = NULL, worldTransform = NULL, unit = NULL, geometry = NULL,
+                            layout = NULL)
     {
         dims <- as.integer(dims)
 
@@ -80,6 +85,7 @@ packedImage <- S7::new_class("packedImage",
             slope = as.double(slope),
             intercept = as.double(intercept),
             dims = dims,
+            layout = as.integer(layout %||% seq_along(dims)),
             geometry = resolveGeometry(dims, spatial, voxelSize, worldTransform, unit, geometry))
     })
 
@@ -136,7 +142,7 @@ S7::method(dim, packedImage) <- function (x) x@dims
 S7::method(length, packedImage) <- function (x) prod(x@dims)
 
 S7::method(as.array, packedImage) <- function (x, ...)
-    array(unpackNarrow(x@values, x@storageType, prod(x@dims), x@slope, x@intercept), x@dims)
+    array(unpackNarrow(x@values, x@storageType, prod(x@dims), x@slope, x@intercept, x@dims, layoutArg(x)), x@dims)
 
 S7::method(print, packedImage) <- function (x, ...)
 {
@@ -149,6 +155,7 @@ S7::method(print, packedImage) <- function (x, ...)
     cat(sprintf("  Storage            : %s bytes, against %s as double\n",
                 format(length(x@values), big.mark = ","),
                 format(prod(x@dims) * 8, big.mark = ",")))
+    printLayout(x@layout)
 
     invisible(x)
 }
@@ -171,7 +178,7 @@ S7::method(`[`, packedImage) <- function (x, ..., drop = TRUE)
             i <- flattenIndices(array(0L, x@dims), i)
         else if (is.logical(i))
             i <- which(i)
-        return(narrowElements(x@values, x@storageType, prod(x@dims), as.double(i),
+        return(narrowElements(x@values, x@storageType, prod(x@dims), storageIndices(x, i),
                               x@slope, x@intercept))
     }
 

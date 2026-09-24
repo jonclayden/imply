@@ -34,7 +34,8 @@ isStillAbsent <- function (value)
 rebuild <- function (template, mask, values)
 {
     tight <- tightenMask(mask, values, locationCount(template), elementCount(template))
-    sparseImage(mask = tight$mask, values = tight$values, dim = template@dims, geometry = template@geometry)
+    sparseImage(mask = tight$mask, values = tight$values, dim = template@dims, geometry = template@geometry,
+                layout = template@layout)
 }
 
 denseFrom <- function (template, values)
@@ -84,8 +85,10 @@ sparseWithSparse <- function (op, e1, e2)
     if (!identical(spatial(e1), spatial(e2)))
         stop("Sparse images must have the same number of spatial dimensions")
 
+    ## Stored values can only be combined location by location when both
+    ## images store their locations in the same order
     absent <- absentResult(op, zeroOf(e1@values), zeroOf(e2@values))
-    if (!isStillAbsent(absent))
+    if (!isStillAbsent(absent) || !identical(e1@layout, e2@layout))
         return(denseFrom(e1, op(as.array(e1), as.array(e2))))
 
     ## A result can only be non-zero where at least one operand holds
