@@ -55,6 +55,14 @@ expect_equal(length(scaled@values), 256L * 2L)
 ## A quarter of the memory of a double image
 expect_equal(length(scaled@values), length(values) * 8L / 4L)
 
+## A scaled int32 never stores -2^31, which R reserves for NA, so readers that
+## hold int32 values as R integers see no spurious missing value
+scaled32 <- asPacked(image, "int32")
+stored <- readBin(scaled32@values, "integer", n = length(values), size = 4L)
+expect_false(anyNA(stored))
+expect_equal(min(stored), -2147483647L)
+expect_equal(max(stored), 2147483647L)
+
 ## Every type round-trips within its own resolution
 resolution <- c(int8 = 1 / 250, uint8 = 1 / 250, int16 = 1 / 60000,
                 uint16 = 1 / 60000, int32 = 1e-8, float32 = 1e-6)

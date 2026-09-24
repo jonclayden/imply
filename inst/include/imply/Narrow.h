@@ -173,6 +173,12 @@ inline Calibration calibrateFor (const NarrowType type, const double dataMin, co
     double low, high;
     narrowTypeRange(type, low, high);
 
+    // R reserves the most negative int for NA, so a stored int32 of that value
+    // is read as missing by anything that holds int32 values as R integers,
+    // RNifti included. A scaling never needs it, so it is kept out of use
+    if (type == NarrowType::int32)
+        low += 1.0;
+
     // Whole numbers already inside the range need no scaling, and leaving it
     // alone keeps the stored values readable and exact
     if (integral && dataMin >= low && dataMax <= high)
