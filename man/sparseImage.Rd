@@ -5,6 +5,7 @@
 \alias{isSparseImage}
 \alias{asSparse}
 \alias{maskedMatrix}
+\alias{storedValues}
 \alias{sparseness}
 \alias{mask}
 \title{Sparse images}
@@ -17,7 +18,8 @@ sparseImage(
   voxelSize = NULL,
   worldTransform = NULL,
   unit = NULL,
-  geometry = NULL
+  geometry = NULL,
+  layout = NULL
 )
 
 isSparseImage(x)
@@ -25,6 +27,8 @@ isSparseImage(x)
 asSparse(x, ...)
 
 maskedMatrix(x)
+
+storedValues(x)
 
 sparseness(x)
 
@@ -40,6 +44,11 @@ mask(x)
 \item{spatial, voxelSize, worldTransform, unit, geometry}{Image geometry, as
 for \code{\link[=denseImage]{denseImage()}}.}
 
+\item{layout}{How the image's axes map onto the stored order of locations,
+as described for \code{\link[=storageLayout]{storageLayout()}}. For a sparse image it may only
+reorder and reverse the spatial axes among themselves; the values held at
+each location are always stored in order. The default is the identity.}
+
 \item{x}{An image or array.}
 
 \item{...}{Further arguments to \code{sparseImage()}.}
@@ -54,6 +63,10 @@ is over \emph{locations}, not over individual values: a location is either
 present, in which case the whole vector of values held there is stored, or
 absent, in which case every one of them is implicitly zero. That generally
 matches the intent, and it keeps the stored values contiguous.
+
+\code{storedValues()} returns the values exactly as stored, never copying, along
+with the location of each column as a linear index into the image's own
+spatial grid. The two differ only for a reoriented image.
 }
 \details{
 The mask is one bit per location and the values are packed in location

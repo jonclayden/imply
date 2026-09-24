@@ -17,7 +17,8 @@ packedImage(
   voxelSize = NULL,
   worldTransform = NULL,
   unit = NULL,
-  geometry = NULL
+  geometry = NULL,
+  layout = NULL
 )
 
 isPackedImage(x)
@@ -36,6 +37,10 @@ automatically when not given.}
 
 \item{spatial, voxelSize, worldTransform, unit, geometry}{Image geometry, as
 for \code{\link[=denseImage]{denseImage()}}.}
+
+\item{layout}{How the image's axes map onto the order of \code{values}, as
+described for \code{\link[=storageLayout]{storageLayout()}}. The default is the identity, meaning
+that \code{values} are in the image's own axis order.}
 
 \item{x}{An image or array.}
 
