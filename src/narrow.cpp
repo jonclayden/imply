@@ -5,6 +5,7 @@
 #include "imply/Dispatch.h"
 #include "imply/RImage.h"
 #include "imply/Narrow.h"
+#include "imply/View.h"
 
 using namespace imply;
 
@@ -132,10 +133,12 @@ Rcpp::RawVector packNarrow (Rcpp::RObject x, std::string type, double slope = 1,
     return result;
 }
 
-// Materialise narrow storage back into a double vector
+// Materialise narrow storage back into a double vector, in view order when a
+// layout is given
 // [[Rcpp::export]]
 Rcpp::NumericVector unpackNarrow (Rcpp::RawVector packed, std::string type, double count,
-                                  double slope = 1, double intercept = 0)
+                                  double slope = 1, double intercept = 0,
+                                  SEXP dim = R_NilValue, SEXP layout = R_NilValue)
 {
     const NarrowType target = narrowTypeFromName(type);
     const R_xlen_t n = static_cast<R_xlen_t>(count);
@@ -149,8 +152,20 @@ Rcpp::NumericVector unpackNarrow (Rcpp::RawVector packed, std::string type, doub
     dispatchNarrowType(target, [&](auto stored) -> SEXP {
         typedef decltype(stored) Stored;
         const NarrowAccessor<Stored> accessor(bytes, slope, intercept);
-        for (R_xlen_t i=0; i<n; i++)
-            result[i] = accessor[static_cast<Extent>(i)];
+        const std::vector<int> order = layoutFrom(layout);
+        if (order.empty() || Rf_isNull(dim))
+        {
+            for (R_xlen_t i=0; i<n; i++)
+                result[i] = accessor[static_cast<Extent>(i)];
+        }
+        else
+        {
+            const Rcpp::IntegerVector extents(dim);
+            const ViewMap view(std::vector<Extent>(extents.begin(), extents.end()), order);
+            if (static_cast<R_xlen_t>(view.size()) != n)
+                Rcpp::stop("Dimensions do not match the number of values");
+            gatherView(accessor, view, result.begin());
+        }
         return R_NilValue;
     });
 

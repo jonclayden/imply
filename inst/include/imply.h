@@ -24,6 +24,10 @@
 //   OffsetWalker     traversal of an arbitrary subset of dimensions, yielding
 //                    memory offsets without materialising an index
 //
+//   ViewMap          how an image's axes map onto its storage: a permutation
+//                    and reversal of axes, as signed strides and a base
+//                    offset, which is how a reoriented image avoids a copy
+//
 //   StrideIterator   a random-access iterator over a strided run of values,
 //                    for handing a dense line straight to a standard
 //                    algorithm rather than gathering it into a buffer first
@@ -41,6 +45,7 @@
 #include "imply/Raster.h"
 #include "imply/Space.h"
 #include "imply/Blocks.h"
+#include "imply/View.h"
 #include "imply/Iterator.h"
 #include "imply/Parallel.h"
 #include "imply/Storage.h"
