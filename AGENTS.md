@@ -63,6 +63,8 @@ Key pieces:
 - **`ImageSpace`** (`Space.h`) — voxel-to-world geometry, the C++ counterpart of `imageGeometry`. Header-only, no file-format dependency.
 - **`parallelFor`** (`Parallel.h`) — libdispatch, OpenMP or serial, dividing work into a fixed number of *chunks* so a requested thread count is meaningful on both backends.
 - **Sinks** (`Sink.h`) — results are written through a preallocated typed vector where every call returns the same shape, falling back to a list otherwise. A file-backed sink would slot in here.
+- **`ViewMap`** (`View.h`) — how an image's axes (the *view*) map onto its storage, as signed strides and a base offset. A *layout* gives, per view axis, the one-based rank of its storage axis, negated if reversed (MRtrix's convention, one-based so that a reversed first axis can be written). The engines take a `ViewMap` rather than computing strides, so reorientation costs no kernel changes. `inverseWalker()` goes the other way, visiting storage in order and yielding view offsets, which is how streams are decoded.
+- **Codec** (`src/codec.cpp`, `R/codec.R`) — `storageDescriptor()`, `readImageData()`, `writeImageData()`. Format-free: a format package parses its header into a descriptor and hands over a connection. Bytes come through R connections via `Rcpp::Function` callbacks (so gzip is R's business, and an R error unwinds cleanly); C++ only reinterprets them. Colour is uint8 with an extra rank-one storage axis, arranged in R, so it never reaches C++ as a type.
 
 The public C++ API is header-only under `inst/include/`; downstream packages need only `LinkingTo: imply`.
 
@@ -70,7 +72,7 @@ The public C++ API is header-only under `inst/include/`; downstream packages nee
 
 - **C++ types** (classes, structs, enums, member typedefs) are UpperCamelCase. **Namespaces, functions, methods, variables and enum values** are lowerCamelCase.
 - **R functions and variables** are lowerCamelCase throughout.
-- **C++17**, but the only C++17 feature used is `if constexpr` (12 occurrences). Generic lambdas are the one C++14 feature, and they are load-bearing — they are how `dispatchType`/`dispatchDims`/`dispatchNarrowType` turn a runtime type into a compile-time one exactly once, at the R boundary.
+- **C++17**, but the only C++17 feature used is `if constexpr` (17 occurrences). Generic lambdas are the one C++14 feature, and they are load-bearing — they are how `dispatchType`/`dispatchDims`/`dispatchNarrowType` turn a runtime type into a compile-time one exactly once, at the R boundary.
 - Dispatch happens **once**, at the boundary; kernels are fully typed and free of per-element branching or virtual calls. This is a deliberate departure from RNifti's `NiftiImageData`, whose proxy iterator costs an indirect call per element.
 - Documentation is roxygen2 (8.0.0). `NAMESPACE` and `man/` are generated — do not edit them.
 
@@ -88,6 +90,10 @@ Consequences that are easy to get wrong:
 **Use `Rcpp::Rcpp_fast_eval`, never `Rf_eval`, for callbacks into R.** R may jump out of the applied function — an error, an interrupt, a `return()` from an enclosing frame, a restart being invoked — and a bare `Rf_eval` would longjmp past every C++ frame, leaking the sinks and walkers. `R_UnwindProtect` turns the jump into a C++ exception; `END_RCPP` resumes it once the stack has unwound. Costs about 0.35 us per call.
 
 **`sparseImage` stores its values already shaped** as `c(elements, stored)`, which is what makes `maskedMatrix()` zero-copy. R duplicates on `dim<-` when a vector is shared with an S7 object, so shaping at construction is the only way to avoid a copy.
+
+**No domain conventions in orientation.** `worldAxes()` and `reorient()` speak only in signed world-axis indices (the same form as a layout). Anatomical codes such as `"LAS"`, and the NIfTI assumption that world space is RAS, belong in `imply.neuro`, which is to wrap these as `orientation()` and `orientation<-`. Do not add a same-named function here: two packages exporting one name mask each other by attach order.
+
+**Dense images never carry a view.** They are R arrays, and base R indexes them in memory order, so `reorient()` on a dense image copies. Only packed and sparse images have a `layout` property, and a sparse image's layout may only reorder its spatial axes among themselves, because `SparseAccessor` splits a storage index into location and element arithmetically. Stored order must never leak through the ordinary interface: `dim()`, `[`, `as.array()`, `mask()`, `maskedMatrix()` and every engine work in the view. `storedValues()` is the one deliberate window onto stored order.
 
 **`voxelApply()` over a sparse image does not skip absent locations.** It gathers zeros for them and still calls the function. Sparsity buys memory, not time. Use `mask =` to skip, which works in the packed space and scatters back.
 
@@ -118,7 +124,10 @@ Do not put real `SIGINT` raising in the suite — it kills the test process. Int
 ## Known gaps and deferred work
 
 - `FixedRaster<D>` and `dispatchDims` are not used by any shipping code path. Either wire them into the apply and reduce engines or remove them.
-- No lazy or memory-mapped input, and no file-backed sink. The `Sink` interface exists so the latter can be added without touching kernels.
+- No memory-mapped input, and no file-backed sink. Memory mapping is deferred to a later release; it would sit behind the same storage descriptor, with packed images as the natural target. The `Sink` interface exists so a file-backed sink can be added without touching kernels.
+- Packed and sparse images have no `[<-` method, view or not.
+- A sparse read is streamed a volume at a time only for volume-ordered data. Interleaved layouts, and bit data, are read densely and then converted.
+- Format adapters (NIfTI, ANALYZE, MGH, MRtrix) belong in the separate `imply.neuro` package, not here.
 - Interleaved (voxel-major) storage for dense images is designed for — the container carries general strides — but not implemented. Benchmark before adding: blocked traversal already recovers most of the benefit for whole-image sweeps.
 - `imreduce()` has no `progress` argument, since its loop runs on worker threads.
 - `DESCRIPTION` has no `Depends: R (>= …)`. S7 needs R >= 3.5.0, but `CXX_STD = CXX17` really needs GCC 7+ / clang 5+, which an R 3.5-era toolchain will not have.

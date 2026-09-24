@@ -177,6 +177,48 @@ voxelSize(doubled)
 ## [1] 2.0 2.0 2.5
 ```
 
+### Orientation
+
+`worldAxes()` reports which world axis each spatial axis runs along, as a signed integer: `c(-1, 2, 3)` means the first index increases along the negative first world axis, and the others along the positive second and third. `reorient()` permutes and reverses axes to match another such order, by default all positive and in order, keeping every voxel where it is in world space. For packed and sparse images this changes only how the image's axes map onto its storage, so no data are moved; a dense image, being a plain array, is copied. imply attaches no meaning to the world axes, so domain conventions such as neuroimaging's anatomical orientation codes are left to packages built on it.
+
+
+``` r
+tilted <- asPacked(denseImage(data, worldTransform = diag(c(-2, 2, 2.5, 1))), "float32")
+worldAxes(tilted)
+## [1] -1  2  3
+aligned <- reorient(tilted)
+worldAxes(aligned)
+## [1] 1 2 3
+identical(aligned@values, tilted@values) # the same bytes, viewed differently
+## [1] TRUE
+```
+
+## Reading and writing image data
+
+imply knows no file formats, but it does know how to turn a stream of bytes into an image and back. A `storageDescriptor()` says how the values are stored: their type, byte order, offset, scaling and axis order. A format package parses its own header into one, and `readImageData()` and `writeImageData()` do the rest, through R connections, so gzipped streams need nothing special.
+
+
+``` r
+file <- tempfile(fileext = ".gz")
+descriptor <- storageDescriptor("int16", endian = "big", offset = 16)
+used <- writeImageData(image, file, descriptor) # chooses a scaling, and says what it chose
+readImageData(file, used, dim(image), geometry = image)
+## Packed image: 4 x 5 x 6 x 10 (int16)
+##   Spatial dimensions : 4 x 5 x 6
+##   Voxel size         : 2 x 2 x 2.5 (unit unknown)
+##   Values per location: 10
+##   Scaling            : value = stored * 0.000107171 + 0.298598
+##   Storage            : 2,400 bytes, against 9,600 as double
+```
+
+By default the result is packed if the stored type allows, keeping the file's own narrow representation, or sparse if a `mask` is given, in which case the dense array never exists. Individual volumes can be read on their own, without reading the rest.
+
+
+``` r
+dim(readImageData(file, used, dim(image), as = "dense", volumes = c(1, 5)))
+## [1] 4 5 6 2
+```
+
 ## Applying and reducing functions
 
 `imapply()` is the memory-efficient analogue of `apply()` from the `base` package: it gives the same answer for the same `margin`, but gathers each sub-array directly through the image's strides rather than permuting the whole array into a fresh copy first.
