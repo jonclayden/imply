@@ -31,8 +31,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // applyOverMarginPacked
-Rcpp::List applyOverMarginPacked(Rcpp::RawVector values, std::string type, Rcpp::IntegerVector dim, Rcpp::IntegerVector margin, Rcpp::Function fun, double slope, double intercept, Rcpp::Nullable<Rcpp::List> callNames, bool simplify, double from, double to, Rcpp::Nullable<Rcpp::Function> progress, double reportEvery);
-RcppExport SEXP _imply_applyOverMarginPacked(SEXP valuesSEXP, SEXP typeSEXP, SEXP dimSEXP, SEXP marginSEXP, SEXP funSEXP, SEXP slopeSEXP, SEXP interceptSEXP, SEXP callNamesSEXP, SEXP simplifySEXP, SEXP fromSEXP, SEXP toSEXP, SEXP progressSEXP, SEXP reportEverySEXP) {
+Rcpp::List applyOverMarginPacked(Rcpp::RawVector values, std::string type, Rcpp::IntegerVector dim, Rcpp::IntegerVector margin, Rcpp::Function fun, double slope, double intercept, Rcpp::Nullable<Rcpp::List> callNames, bool simplify, double from, double to, Rcpp::Nullable<Rcpp::Function> progress, double reportEvery, SEXP layout);
+RcppExport SEXP _imply_applyOverMarginPacked(SEXP valuesSEXP, SEXP typeSEXP, SEXP dimSEXP, SEXP marginSEXP, SEXP funSEXP, SEXP slopeSEXP, SEXP interceptSEXP, SEXP callNamesSEXP, SEXP simplifySEXP, SEXP fromSEXP, SEXP toSEXP, SEXP progressSEXP, SEXP reportEverySEXP, SEXP layoutSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -49,13 +49,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type to(toSEXP);
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::Function> >::type progress(progressSEXP);
     Rcpp::traits::input_parameter< double >::type reportEvery(reportEverySEXP);
-    rcpp_result_gen = Rcpp::wrap(applyOverMarginPacked(values, type, dim, margin, fun, slope, intercept, callNames, simplify, from, to, progress, reportEvery));
+    Rcpp::traits::input_parameter< SEXP >::type layout(layoutSEXP);
+    rcpp_result_gen = Rcpp::wrap(applyOverMarginPacked(values, type, dim, margin, fun, slope, intercept, callNames, simplify, from, to, progress, reportEvery, layout));
     return rcpp_result_gen;
 END_RCPP
 }
 // applyOverMarginSparse
-Rcpp::List applyOverMarginSparse(Rcpp::RawVector mask, Rcpp::RObject values, Rcpp::IntegerVector dim, int spatial, Rcpp::IntegerVector margin, Rcpp::Function fun, Rcpp::Nullable<Rcpp::List> callNames, bool simplify, double from, double to, Rcpp::Nullable<Rcpp::Function> progress, double reportEvery);
-RcppExport SEXP _imply_applyOverMarginSparse(SEXP maskSEXP, SEXP valuesSEXP, SEXP dimSEXP, SEXP spatialSEXP, SEXP marginSEXP, SEXP funSEXP, SEXP callNamesSEXP, SEXP simplifySEXP, SEXP fromSEXP, SEXP toSEXP, SEXP progressSEXP, SEXP reportEverySEXP) {
+Rcpp::List applyOverMarginSparse(Rcpp::RawVector mask, Rcpp::RObject values, Rcpp::IntegerVector dim, int spatial, Rcpp::IntegerVector margin, Rcpp::Function fun, Rcpp::Nullable<Rcpp::List> callNames, bool simplify, double from, double to, Rcpp::Nullable<Rcpp::Function> progress, double reportEvery, SEXP layout);
+RcppExport SEXP _imply_applyOverMarginSparse(SEXP maskSEXP, SEXP valuesSEXP, SEXP dimSEXP, SEXP spatialSEXP, SEXP marginSEXP, SEXP funSEXP, SEXP callNamesSEXP, SEXP simplifySEXP, SEXP fromSEXP, SEXP toSEXP, SEXP progressSEXP, SEXP reportEverySEXP, SEXP layoutSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -71,7 +72,61 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type to(toSEXP);
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::Function> >::type progress(progressSEXP);
     Rcpp::traits::input_parameter< double >::type reportEvery(reportEverySEXP);
-    rcpp_result_gen = Rcpp::wrap(applyOverMarginSparse(mask, values, dim, spatial, margin, fun, callNames, simplify, from, to, progress, reportEvery));
+    Rcpp::traits::input_parameter< SEXP >::type layout(layoutSEXP);
+    rcpp_result_gen = Rcpp::wrap(applyOverMarginSparse(mask, values, dim, spatial, margin, fun, callNames, simplify, from, to, progress, reportEvery, layout));
+    return rcpp_result_gen;
+END_RCPP
+}
+// decodeImage
+SEXP decodeImage(Rcpp::Function read, Rcpp::Function skip, std::string type, bool swap, double slope, double intercept, Rcpp::IntegerVector dim, SEXP layout, int spatial, std::string as, SEXP blocks, SEXP mask, bool msbFirst);
+RcppExport SEXP _imply_decodeImage(SEXP readSEXP, SEXP skipSEXP, SEXP typeSEXP, SEXP swapSEXP, SEXP slopeSEXP, SEXP interceptSEXP, SEXP dimSEXP, SEXP layoutSEXP, SEXP spatialSEXP, SEXP asSEXP, SEXP blocksSEXP, SEXP maskSEXP, SEXP msbFirstSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::Function >::type read(readSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Function >::type skip(skipSEXP);
+    Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
+    Rcpp::traits::input_parameter< bool >::type swap(swapSEXP);
+    Rcpp::traits::input_parameter< double >::type slope(slopeSEXP);
+    Rcpp::traits::input_parameter< double >::type intercept(interceptSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type dim(dimSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type layout(layoutSEXP);
+    Rcpp::traits::input_parameter< int >::type spatial(spatialSEXP);
+    Rcpp::traits::input_parameter< std::string >::type as(asSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type blocks(blocksSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type mask(maskSEXP);
+    Rcpp::traits::input_parameter< bool >::type msbFirst(msbFirstSEXP);
+    rcpp_result_gen = Rcpp::wrap(decodeImage(read, skip, type, swap, slope, intercept, dim, layout, spatial, as, blocks, mask, msbFirst));
+    return rcpp_result_gen;
+END_RCPP
+}
+// encodeImage
+Rcpp::RawVector encodeImage(Rcpp::RObject x, std::string type, bool swap, double slope, double intercept, Rcpp::IntegerVector dim, SEXP layout, bool msbFirst);
+RcppExport SEXP _imply_encodeImage(SEXP xSEXP, SEXP typeSEXP, SEXP swapSEXP, SEXP slopeSEXP, SEXP interceptSEXP, SEXP dimSEXP, SEXP layoutSEXP, SEXP msbFirstSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::RObject >::type x(xSEXP);
+    Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
+    Rcpp::traits::input_parameter< bool >::type swap(swapSEXP);
+    Rcpp::traits::input_parameter< double >::type slope(slopeSEXP);
+    Rcpp::traits::input_parameter< double >::type intercept(interceptSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type dim(dimSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type layout(layoutSEXP);
+    Rcpp::traits::input_parameter< bool >::type msbFirst(msbFirstSEXP);
+    rcpp_result_gen = Rcpp::wrap(encodeImage(x, type, swap, slope, intercept, dim, layout, msbFirst));
+    return rcpp_result_gen;
+END_RCPP
+}
+// swapBytes
+Rcpp::RawVector swapBytes(Rcpp::RawVector bytes, int size);
+RcppExport SEXP _imply_swapBytes(SEXP bytesSEXP, SEXP sizeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::RawVector >::type bytes(bytesSEXP);
+    Rcpp::traits::input_parameter< int >::type size(sizeSEXP);
+    rcpp_result_gen = Rcpp::wrap(swapBytes(bytes, size));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -204,8 +259,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // unpackNarrow
-Rcpp::NumericVector unpackNarrow(Rcpp::RawVector packed, std::string type, double count, double slope, double intercept);
-RcppExport SEXP _imply_unpackNarrow(SEXP packedSEXP, SEXP typeSEXP, SEXP countSEXP, SEXP slopeSEXP, SEXP interceptSEXP) {
+Rcpp::NumericVector unpackNarrow(Rcpp::RawVector packed, std::string type, double count, double slope, double intercept, SEXP dim, SEXP layout);
+RcppExport SEXP _imply_unpackNarrow(SEXP packedSEXP, SEXP typeSEXP, SEXP countSEXP, SEXP slopeSEXP, SEXP interceptSEXP, SEXP dimSEXP, SEXP layoutSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -214,7 +269,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type count(countSEXP);
     Rcpp::traits::input_parameter< double >::type slope(slopeSEXP);
     Rcpp::traits::input_parameter< double >::type intercept(interceptSEXP);
-    rcpp_result_gen = Rcpp::wrap(unpackNarrow(packed, type, count, slope, intercept));
+    Rcpp::traits::input_parameter< SEXP >::type dim(dimSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type layout(layoutSEXP);
+    rcpp_result_gen = Rcpp::wrap(unpackNarrow(packed, type, count, slope, intercept, dim, layout));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -383,8 +440,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // reduceOverMarginPacked
-Rcpp::NumericVector reduceOverMarginPacked(Rcpp::RawVector values, std::string type, Rcpp::IntegerVector dim, Rcpp::IntegerVector margin, std::string what, double slope, double intercept, bool naRm, int threads);
-RcppExport SEXP _imply_reduceOverMarginPacked(SEXP valuesSEXP, SEXP typeSEXP, SEXP dimSEXP, SEXP marginSEXP, SEXP whatSEXP, SEXP slopeSEXP, SEXP interceptSEXP, SEXP naRmSEXP, SEXP threadsSEXP) {
+Rcpp::NumericVector reduceOverMarginPacked(Rcpp::RawVector values, std::string type, Rcpp::IntegerVector dim, Rcpp::IntegerVector margin, std::string what, double slope, double intercept, bool naRm, int threads, SEXP layout);
+RcppExport SEXP _imply_reduceOverMarginPacked(SEXP valuesSEXP, SEXP typeSEXP, SEXP dimSEXP, SEXP marginSEXP, SEXP whatSEXP, SEXP slopeSEXP, SEXP interceptSEXP, SEXP naRmSEXP, SEXP threadsSEXP, SEXP layoutSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -397,13 +454,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type intercept(interceptSEXP);
     Rcpp::traits::input_parameter< bool >::type naRm(naRmSEXP);
     Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(reduceOverMarginPacked(values, type, dim, margin, what, slope, intercept, naRm, threads));
+    Rcpp::traits::input_parameter< SEXP >::type layout(layoutSEXP);
+    rcpp_result_gen = Rcpp::wrap(reduceOverMarginPacked(values, type, dim, margin, what, slope, intercept, naRm, threads, layout));
     return rcpp_result_gen;
 END_RCPP
 }
 // reduceOverMarginSparse
-Rcpp::NumericVector reduceOverMarginSparse(Rcpp::RawVector mask, Rcpp::RObject values, Rcpp::IntegerVector dim, int spatial, Rcpp::IntegerVector margin, std::string what, bool naRm, int threads);
-RcppExport SEXP _imply_reduceOverMarginSparse(SEXP maskSEXP, SEXP valuesSEXP, SEXP dimSEXP, SEXP spatialSEXP, SEXP marginSEXP, SEXP whatSEXP, SEXP naRmSEXP, SEXP threadsSEXP) {
+Rcpp::NumericVector reduceOverMarginSparse(Rcpp::RawVector mask, Rcpp::RObject values, Rcpp::IntegerVector dim, int spatial, Rcpp::IntegerVector margin, std::string what, bool naRm, int threads, SEXP layout);
+RcppExport SEXP _imply_reduceOverMarginSparse(SEXP maskSEXP, SEXP valuesSEXP, SEXP dimSEXP, SEXP spatialSEXP, SEXP marginSEXP, SEXP whatSEXP, SEXP naRmSEXP, SEXP threadsSEXP, SEXP layoutSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -415,7 +473,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< std::string >::type what(whatSEXP);
     Rcpp::traits::input_parameter< bool >::type naRm(naRmSEXP);
     Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(reduceOverMarginSparse(mask, values, dim, spatial, margin, what, naRm, threads));
+    Rcpp::traits::input_parameter< SEXP >::type layout(layoutSEXP);
+    rcpp_result_gen = Rcpp::wrap(reduceOverMarginSparse(mask, values, dim, spatial, margin, what, naRm, threads, layout));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -432,8 +491,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // sparseToDense
-SEXP sparseToDense(Rcpp::RawVector mask, Rcpp::RObject values, Rcpp::IntegerVector dim, int spatial);
-RcppExport SEXP _imply_sparseToDense(SEXP maskSEXP, SEXP valuesSEXP, SEXP dimSEXP, SEXP spatialSEXP) {
+SEXP sparseToDense(Rcpp::RawVector mask, Rcpp::RObject values, Rcpp::IntegerVector dim, int spatial, SEXP layout);
+RcppExport SEXP _imply_sparseToDense(SEXP maskSEXP, SEXP valuesSEXP, SEXP dimSEXP, SEXP spatialSEXP, SEXP layoutSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -441,7 +500,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::RObject >::type values(valuesSEXP);
     Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type dim(dimSEXP);
     Rcpp::traits::input_parameter< int >::type spatial(spatialSEXP);
-    rcpp_result_gen = Rcpp::wrap(sparseToDense(mask, values, dim, spatial));
+    Rcpp::traits::input_parameter< SEXP >::type layout(layoutSEXP);
+    rcpp_result_gen = Rcpp::wrap(sparseToDense(mask, values, dim, spatial, layout));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -537,11 +597,40 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// viewGather
+SEXP viewGather(Rcpp::RObject x, Rcpp::IntegerVector dim, SEXP layout);
+RcppExport SEXP _imply_viewGather(SEXP xSEXP, SEXP dimSEXP, SEXP layoutSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::RObject >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type dim(dimSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type layout(layoutSEXP);
+    rcpp_result_gen = Rcpp::wrap(viewGather(x, dim, layout));
+    return rcpp_result_gen;
+END_RCPP
+}
+// viewIndices
+Rcpp::NumericVector viewIndices(Rcpp::NumericVector indices, Rcpp::IntegerVector dim, SEXP layout);
+RcppExport SEXP _imply_viewIndices(SEXP indicesSEXP, SEXP dimSEXP, SEXP layoutSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type indices(indicesSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type dim(dimSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type layout(layoutSEXP);
+    rcpp_result_gen = Rcpp::wrap(viewIndices(indices, dim, layout));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_imply_applyOverMargin", (DL_FUNC) &_imply_applyOverMargin, 9},
-    {"_imply_applyOverMarginPacked", (DL_FUNC) &_imply_applyOverMarginPacked, 13},
-    {"_imply_applyOverMarginSparse", (DL_FUNC) &_imply_applyOverMarginSparse, 12},
+    {"_imply_applyOverMarginPacked", (DL_FUNC) &_imply_applyOverMarginPacked, 14},
+    {"_imply_applyOverMarginSparse", (DL_FUNC) &_imply_applyOverMarginSparse, 13},
+    {"_imply_decodeImage", (DL_FUNC) &_imply_decodeImage, 13},
+    {"_imply_encodeImage", (DL_FUNC) &_imply_encodeImage, 8},
+    {"_imply_swapBytes", (DL_FUNC) &_imply_swapBytes, 2},
     {"_imply_pointsToVoxel", (DL_FUNC) &_imply_pointsToVoxel, 4},
     {"_imply_pointsFromVoxel", (DL_FUNC) &_imply_pointsFromVoxel, 4},
     {"_imply_roundPoints", (DL_FUNC) &_imply_roundPoints, 3},
@@ -552,7 +641,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_imply_valueRange", (DL_FUNC) &_imply_valueRange, 1},
     {"_imply_calibrateStorage", (DL_FUNC) &_imply_calibrateStorage, 4},
     {"_imply_packNarrow", (DL_FUNC) &_imply_packNarrow, 4},
-    {"_imply_unpackNarrow", (DL_FUNC) &_imply_unpackNarrow, 5},
+    {"_imply_unpackNarrow", (DL_FUNC) &_imply_unpackNarrow, 7},
     {"_imply_narrowElements", (DL_FUNC) &_imply_narrowElements, 6},
     {"_imply_narrowSummary", (DL_FUNC) &_imply_narrowSummary, 6},
     {"_imply_rasterInfo", (DL_FUNC) &_imply_rasterInfo, 3},
@@ -565,10 +654,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"_imply_permuteView", (DL_FUNC) &_imply_permuteView, 5},
     {"_imply_dataAddress", (DL_FUNC) &_imply_dataAddress, 1},
     {"_imply_reduceOverMargin", (DL_FUNC) &_imply_reduceOverMargin, 5},
-    {"_imply_reduceOverMarginPacked", (DL_FUNC) &_imply_reduceOverMarginPacked, 9},
-    {"_imply_reduceOverMarginSparse", (DL_FUNC) &_imply_reduceOverMarginSparse, 8},
+    {"_imply_reduceOverMarginPacked", (DL_FUNC) &_imply_reduceOverMarginPacked, 10},
+    {"_imply_reduceOverMarginSparse", (DL_FUNC) &_imply_reduceOverMarginSparse, 9},
     {"_imply_denseToSparse", (DL_FUNC) &_imply_denseToSparse, 2},
-    {"_imply_sparseToDense", (DL_FUNC) &_imply_sparseToDense, 4},
+    {"_imply_sparseToDense", (DL_FUNC) &_imply_sparseToDense, 5},
     {"_imply_sparseElements", (DL_FUNC) &_imply_sparseElements, 5},
     {"_imply_maskCount", (DL_FUNC) &_imply_maskCount, 2},
     {"_imply_maskToLogical", (DL_FUNC) &_imply_maskToLogical, 2},
@@ -576,6 +665,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_imply_maskCombine", (DL_FUNC) &_imply_maskCombine, 3},
     {"_imply_tightenMask", (DL_FUNC) &_imply_tightenMask, 4},
     {"_imply_repackValues", (DL_FUNC) &_imply_repackValues, 5},
+    {"_imply_viewGather", (DL_FUNC) &_imply_viewGather, 3},
+    {"_imply_viewIndices", (DL_FUNC) &_imply_viewIndices, 3},
     {NULL, NULL, 0}
 };
 

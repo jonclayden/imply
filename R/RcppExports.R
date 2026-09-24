@@ -5,12 +5,24 @@ applyOverMargin <- function(x, margin, fun, callNames = NULL, simplify = TRUE, f
     .Call(`_imply_applyOverMargin`, x, margin, fun, callNames, simplify, from, to, progress, reportEvery)
 }
 
-applyOverMarginPacked <- function(values, type, dim, margin, fun, slope = 1, intercept = 0, callNames = NULL, simplify = TRUE, from = 0, to = -1, progress = NULL, reportEvery = 0) {
-    .Call(`_imply_applyOverMarginPacked`, values, type, dim, margin, fun, slope, intercept, callNames, simplify, from, to, progress, reportEvery)
+applyOverMarginPacked <- function(values, type, dim, margin, fun, slope = 1, intercept = 0, callNames = NULL, simplify = TRUE, from = 0, to = -1, progress = NULL, reportEvery = 0, layout = NULL) {
+    .Call(`_imply_applyOverMarginPacked`, values, type, dim, margin, fun, slope, intercept, callNames, simplify, from, to, progress, reportEvery, layout)
 }
 
-applyOverMarginSparse <- function(mask, values, dim, spatial, margin, fun, callNames = NULL, simplify = TRUE, from = 0, to = -1, progress = NULL, reportEvery = 0) {
-    .Call(`_imply_applyOverMarginSparse`, mask, values, dim, spatial, margin, fun, callNames, simplify, from, to, progress, reportEvery)
+applyOverMarginSparse <- function(mask, values, dim, spatial, margin, fun, callNames = NULL, simplify = TRUE, from = 0, to = -1, progress = NULL, reportEvery = 0, layout = NULL) {
+    .Call(`_imply_applyOverMarginSparse`, mask, values, dim, spatial, margin, fun, callNames, simplify, from, to, progress, reportEvery, layout)
+}
+
+decodeImage <- function(read, skip, type, swap, slope, intercept, dim, layout, spatial, as, blocks = NULL, mask = NULL, msbFirst = FALSE) {
+    .Call(`_imply_decodeImage`, read, skip, type, swap, slope, intercept, dim, layout, spatial, as, blocks, mask, msbFirst)
+}
+
+encodeImage <- function(x, type, swap, slope, intercept, dim, layout = NULL, msbFirst = FALSE) {
+    .Call(`_imply_encodeImage`, x, type, swap, slope, intercept, dim, layout, msbFirst)
+}
+
+swapBytes <- function(bytes, size) {
+    .Call(`_imply_swapBytes`, bytes, size)
 }
 
 pointsToVoxel <- function(locs, xform, pixdim, type = "world") {
@@ -53,8 +65,8 @@ packNarrow <- function(x, type, slope = 1, intercept = 0) {
     .Call(`_imply_packNarrow`, x, type, slope, intercept)
 }
 
-unpackNarrow <- function(packed, type, count, slope = 1, intercept = 0) {
-    .Call(`_imply_unpackNarrow`, packed, type, count, slope, intercept)
+unpackNarrow <- function(packed, type, count, slope = 1, intercept = 0, dim = NULL, layout = NULL) {
+    .Call(`_imply_unpackNarrow`, packed, type, count, slope, intercept, dim, layout)
 }
 
 narrowElements <- function(packed, type, count, indices, slope = 1, intercept = 0) {
@@ -105,20 +117,20 @@ reduceOverMargin <- function(x, margin, what, naRm = FALSE, threads = 0L) {
     .Call(`_imply_reduceOverMargin`, x, margin, what, naRm, threads)
 }
 
-reduceOverMarginPacked <- function(values, type, dim, margin, what, slope = 1, intercept = 0, naRm = FALSE, threads = 0L) {
-    .Call(`_imply_reduceOverMarginPacked`, values, type, dim, margin, what, slope, intercept, naRm, threads)
+reduceOverMarginPacked <- function(values, type, dim, margin, what, slope = 1, intercept = 0, naRm = FALSE, threads = 0L, layout = NULL) {
+    .Call(`_imply_reduceOverMarginPacked`, values, type, dim, margin, what, slope, intercept, naRm, threads, layout)
 }
 
-reduceOverMarginSparse <- function(mask, values, dim, spatial, margin, what, naRm = FALSE, threads = 0L) {
-    .Call(`_imply_reduceOverMarginSparse`, mask, values, dim, spatial, margin, what, naRm, threads)
+reduceOverMarginSparse <- function(mask, values, dim, spatial, margin, what, naRm = FALSE, threads = 0L, layout = NULL) {
+    .Call(`_imply_reduceOverMarginSparse`, mask, values, dim, spatial, margin, what, naRm, threads, layout)
 }
 
 denseToSparse <- function(x, spatial = NULL) {
     .Call(`_imply_denseToSparse`, x, spatial)
 }
 
-sparseToDense <- function(mask, values, dim, spatial) {
-    .Call(`_imply_sparseToDense`, mask, values, dim, spatial)
+sparseToDense <- function(mask, values, dim, spatial, layout = NULL) {
+    .Call(`_imply_sparseToDense`, mask, values, dim, spatial, layout)
 }
 
 sparseElements <- function(mask, values, dim, spatial, indices) {
@@ -147,5 +159,13 @@ tightenMask <- function(mask, values, locations, elements) {
 
 repackValues <- function(oldMask, values, newMask, locations, elements) {
     .Call(`_imply_repackValues`, oldMask, values, newMask, locations, elements)
+}
+
+viewGather <- function(x, dim, layout = NULL) {
+    .Call(`_imply_viewGather`, x, dim, layout)
+}
+
+viewIndices <- function(indices, dim, layout = NULL) {
+    .Call(`_imply_viewIndices`, indices, dim, layout)
 }
 
