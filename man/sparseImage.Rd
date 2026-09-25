@@ -77,4 +77,11 @@ saves at typical densities.
 
 A location holding \code{NA} is kept, since \code{NA} is not zero. Packing an image
 therefore loses nothing.
+
+A sparse image can be indexed and assigned to like an array. Assignment
+keeps the mask accurate: a location given a non-zero value is added, and one
+left holding only zeros is dropped. That takes a pass over the stored
+values each time, which suits occasional edits; to set many values, gather
+them and assign once, rather than one at a time in a loop. As for an array,
+values are promoted to a wider replacement type.
 }

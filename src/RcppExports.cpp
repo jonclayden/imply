@@ -291,6 +291,23 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// narrowAssign
+Rcpp::RawVector narrowAssign(Rcpp::RawVector packed, std::string type, double count, Rcpp::NumericVector indices, Rcpp::NumericVector values, double slope, double intercept);
+RcppExport SEXP _imply_narrowAssign(SEXP packedSEXP, SEXP typeSEXP, SEXP countSEXP, SEXP indicesSEXP, SEXP valuesSEXP, SEXP slopeSEXP, SEXP interceptSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::RawVector >::type packed(packedSEXP);
+    Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
+    Rcpp::traits::input_parameter< double >::type count(countSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type indices(indicesSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type values(valuesSEXP);
+    Rcpp::traits::input_parameter< double >::type slope(slopeSEXP);
+    Rcpp::traits::input_parameter< double >::type intercept(interceptSEXP);
+    rcpp_result_gen = Rcpp::wrap(narrowAssign(packed, type, count, indices, values, slope, intercept));
+    return rcpp_result_gen;
+END_RCPP
+}
 // narrowSummary
 Rcpp::List narrowSummary(Rcpp::RawVector packed, std::string type, double count, double slope, double intercept, bool naRm);
 RcppExport SEXP _imply_narrowSummary(SEXP packedSEXP, SEXP typeSEXP, SEXP countSEXP, SEXP slopeSEXP, SEXP interceptSEXP, SEXP naRmSEXP) {
@@ -643,6 +660,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_imply_packNarrow", (DL_FUNC) &_imply_packNarrow, 4},
     {"_imply_unpackNarrow", (DL_FUNC) &_imply_unpackNarrow, 7},
     {"_imply_narrowElements", (DL_FUNC) &_imply_narrowElements, 6},
+    {"_imply_narrowAssign", (DL_FUNC) &_imply_narrowAssign, 7},
     {"_imply_narrowSummary", (DL_FUNC) &_imply_narrowSummary, 6},
     {"_imply_rasterInfo", (DL_FUNC) &_imply_rasterInfo, 3},
     {"_imply_flattenIndices", (DL_FUNC) &_imply_flattenIndices, 4},

@@ -15,6 +15,13 @@
 #' A location holding `NA` is kept, since `NA` is not zero. Packing an image
 #' therefore loses nothing.
 #'
+#' A sparse image can be indexed and assigned to like an array. Assignment
+#' keeps the mask accurate: a location given a non-zero value is added, and one
+#' left holding only zeros is dropped. That takes a pass over the stored
+#' values each time, which suits occasional edits; to set many values, gather
+#' them and assign once, rather than one at a time in a loop. As for an array,
+#' values are promoted to a wider replacement type.
+#'
 #' @param x An image or array.
 #' @param ... Further arguments to `sparseImage()`.
 #' @param mask A raw vector of one bit per location, or a logical vector.
@@ -264,34 +271,3 @@ S7::method(print, sparseImage) <- function (x, ...)
     invisible(x)
 }
 
-## Indexing goes through the mask rather than materialising the image, which
-## is the whole point of the representation. As for dense images the result is
-## a plain array: an arbitrary index has no well-defined geometry
-S7::method(`[`, sparseImage) <- function (x, ..., drop = TRUE)
-{
-    ## x[] supplies one argument which is nonetheless missing, so the empty
-    ## symbol has to be looked for rather than the arguments merely counted
-    indices <- as.list(substitute(list(...)))[-1L]
-    supplied <- length(indices)
-    absent <- vapply(indices, identical, NA, quote(expr = ))
-
-    if (supplied == 0L || all(absent))
-        return(as.array(x))
-
-    if (supplied == 1L)
-    {
-        i <- ..1
-        if (is.matrix(i) && ncol(i) == length(x@dims))
-            i <- flattenIndices(array(0L, x@dims), i)
-        else if (is.logical(i))
-            i <- which(i)
-        return(sparseElements(x@mask, x@values, x@dims, spatial(x), storageIndices(x, i)))
-    }
-
-    ## Full n-dimensional indexing is rare enough on a sparse image that
-    ## materialising is the simpler and safer path
-    call <- sys.call()
-    call[[1L]] <- quote(`[`)
-    call[[2L]] <- as.array(x)
-    eval(call, parent.frame())
-}

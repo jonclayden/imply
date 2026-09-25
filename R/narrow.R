@@ -13,6 +13,13 @@
 #' The values live in a raw vector, so they are garbage-collected, serialise,
 #' and survive a save and load like any other R object.
 #'
+#' A packed image can be indexed and assigned to like an array, reading and
+#' writing only the values concerned. Assigned values are stored under the
+#' image's existing type and scaling, and so rounded to its resolution; a
+#' value the scaling cannot reach, or a missing value in an integer type, is
+#' an error, since rescaling to fit would change every other value too. Use
+#' [asDense()], or repack with `asPacked()`, to store such values.
+#'
 #' @note Missing values can only be carried by `float32`; packing data
 #' containing `NA` to an integer type is refused rather than silently losing
 #' it. Note that `NA` and `NaN` are not distinguished once packed, since the
@@ -158,34 +165,6 @@ S7::method(print, packedImage) <- function (x, ...)
     printLayout(x@layout)
 
     invisible(x)
-}
-
-## Indexing reads only the values asked for, rather than materialising the
-## image. As elsewhere the result is a plain array
-S7::method(`[`, packedImage) <- function (x, ..., drop = TRUE)
-{
-    indices <- as.list(substitute(list(...)))[-1L]
-    supplied <- length(indices)
-    absent <- vapply(indices, identical, NA, quote(expr = ))
-
-    if (supplied == 0L || all(absent))
-        return(as.array(x))
-
-    if (supplied == 1L)
-    {
-        i <- ..1
-        if (is.matrix(i) && ncol(i) == length(x@dims))
-            i <- flattenIndices(array(0L, x@dims), i)
-        else if (is.logical(i))
-            i <- which(i)
-        return(narrowElements(x@values, x@storageType, prod(x@dims), storageIndices(x, i),
-                              x@slope, x@intercept))
-    }
-
-    call <- sys.call()
-    call[[1L]] <- quote(`[`)
-    call[[2L]] <- as.array(x)
-    eval(call, parent.frame())
 }
 
 ## Summaries are accumulated in double whatever the storage type, so the

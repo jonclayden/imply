@@ -86,6 +86,17 @@ inline void narrowTypeRange (const NarrowType type, double &low, double &high)
     }
 }
 
+// The stored values a scaling may use. R reserves the most negative int for
+// NA, so a stored int32 of that value is read as missing by anything that
+// holds int32 values as R integers, RNifti included. Nothing ever needs it, so
+// it is kept out of use, both when choosing a scaling and when writing values
+inline void narrowTypeUsableRange (const NarrowType type, double &low, double &high)
+{
+    narrowTypeRange(type, low, high);
+    if (type == NarrowType::int32)
+        low += 1.0;
+}
+
 namespace internal {
 
 // Raw vector data carries no alignment guarantee, so stored values are copied
@@ -171,13 +182,7 @@ inline Calibration calibrateFor (const NarrowType type, const double dataMin, co
         return result;
 
     double low, high;
-    narrowTypeRange(type, low, high);
-
-    // R reserves the most negative int for NA, so a stored int32 of that value
-    // is read as missing by anything that holds int32 values as R integers,
-    // RNifti included. A scaling never needs it, so it is kept out of use
-    if (type == NarrowType::int32)
-        low += 1.0;
+    narrowTypeUsableRange(type, low, high);
 
     // Whole numbers already inside the range need no scaling, and leaving it
     // alone keeps the stored values readable and exact

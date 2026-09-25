@@ -73,6 +73,10 @@ narrowElements <- function(packed, type, count, indices, slope = 1, intercept = 
     .Call(`_imply_narrowElements`, packed, type, count, indices, slope, intercept)
 }
 
+narrowAssign <- function(packed, type, count, indices, values, slope = 1, intercept = 0) {
+    .Call(`_imply_narrowAssign`, packed, type, count, indices, values, slope, intercept)
+}
+
 narrowSummary <- function(packed, type, count, slope = 1, intercept = 0, naRm = FALSE) {
     .Call(`_imply_narrowSummary`, packed, type, count, slope, intercept, naRm)
 }

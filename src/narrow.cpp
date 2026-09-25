@@ -199,6 +199,60 @@ Rcpp::NumericVector narrowElements (Rcpp::RawVector packed, std::string type, do
     return result;
 }
 
+// Replace the values at one-based storage indices, in a copy of the packed
+// data. Values are rounded to the type's resolution under the existing
+// scaling, but one that the scaling cannot reach is refused rather than
+// clamped, and so is a missing value in an integer type: silently changing
+// what was assigned would be worse than an error. Where an index repeats, the
+// last value given wins, as for an R vector
+// [[Rcpp::export]]
+Rcpp::RawVector narrowAssign (Rcpp::RawVector packed, std::string type, double count, Rcpp::NumericVector indices,
+                              Rcpp::NumericVector values, double slope = 1, double intercept = 0)
+{
+    const NarrowType target = narrowTypeFromName(type);
+    const Extent total = static_cast<Extent>(count);
+    if (values.size() != indices.size())
+        Rcpp::stop("There must be one value for each index");
+
+    double low, high;
+    narrowTypeUsableRange(target, low, high);
+    const bool isInteger = narrowTypeIsInteger(target);
+
+    Rcpp::RawVector result = Rcpp::clone(packed);
+    Rbyte * const bytes = result.begin();
+
+    dispatchNarrowType(target, [&](auto stored) -> SEXP {
+        typedef decltype(stored) Stored;
+
+        for (R_xlen_t k=0; k<indices.size(); k++)
+        {
+            const double index = indices[k];
+            if (ISNAN(index) || index < 1 || index > static_cast<double>(total))
+                Rcpp::stop("Index %d is out of range", double(k + 1));
+            const Extent position = static_cast<Extent>(index) - 1;
+
+            if (ISNAN(values[k]))
+            {
+                if (isInteger)
+                    Rcpp::stop("Missing values cannot be stored in a packed image of type %s", type);
+                internal::writeAs<Stored>(bytes, position, static_cast<Stored>(std::numeric_limits<double>::quiet_NaN()));
+                continue;
+            }
+
+            double value = (values[k] - intercept) / slope;
+            if (isInteger)
+                value = std::nearbyint(value);
+            if (value < low || value > high)
+                Rcpp::stop("The value %g cannot be stored in a packed image of type %s with its current scaling; "
+                           "use asDense(), or repack it with asPacked()", values[k], type);
+            internal::writeAs<Stored>(bytes, position, static_cast<Stored>(value));
+        }
+        return R_NilValue;
+    });
+
+    return result;
+}
+
 // Summaries are computed in double regardless of how narrowly the values are
 // stored, so accumulated error does not depend on the storage type
 // [[Rcpp::export]]

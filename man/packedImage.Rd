@@ -68,6 +68,13 @@ whole of the type's range.
 
 The values live in a raw vector, so they are garbage-collected, serialise,
 and survive a save and load like any other R object.
+
+A packed image can be indexed and assigned to like an array, reading and
+writing only the values concerned. Assigned values are stored under the
+image's existing type and scaling, and so rounded to its resolution; a
+value the scaling cannot reach, or a missing value in an integer type, is
+an error, since rescaling to fit would change every other value too. Use
+\code{\link[=asDense]{asDense()}}, or repack with \code{asPacked()}, to store such values.
 }
 \note{
 Missing values can only be carried by \code{float32}; packing data

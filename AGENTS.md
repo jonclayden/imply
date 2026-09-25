@@ -95,6 +95,8 @@ Consequences that are easy to get wrong:
 
 **Dense images never carry a view.** They are R arrays, and base R indexes them in memory order, so `reorient()` on a dense image copies. Only packed and sparse images have a `layout` property, and a sparse image's layout may only reorder its spatial axes among themselves, because `SparseAccessor` splits a storage index into location and element arithmetically. Stored order must never leak through the ordinary interface: `dim()`, `[`, `as.array()`, `mask()`, `maskedMatrix()` and every engine work in the view. `storedValues()` is the one deliberate window onto stored order.
 
+**Indexing packed and sparse images never materialises them** (`R/subsetting.R`). Subscripts are resolved to linear indices in view order (`resolveIndices()`), then mapped through the view with `storageIndices()`. Packed assignment keeps the existing scaling and refuses what it cannot represent, rather than rescaling everything. Sparse assignment adds and drops locations so that the mask stays accurate. Both `[<-` methods are registered by calling `` S7::`method<-` `` directly, like the dense one, to avoid the namespace binding that trips `tools::checkReplaceFuns()`. The file must sort after `narrow.R` and `sparse.R`, since it registers methods on their classes when sourced.
+
 **`voxelApply()` over a sparse image does not skip absent locations.** It gathers zeros for them and still calls the function. Sparsity buys memory, not time. Use `mask =` to skip, which works in the packed space and scatters back.
 
 ## S7 is used, and it has sharp edges
@@ -125,7 +127,6 @@ Do not put real `SIGINT` raising in the suite — it kills the test process. Int
 
 - `FixedRaster<D>` and `dispatchDims` are not used by any shipping code path. Either wire them into the apply and reduce engines or remove them.
 - No memory-mapped input, and no file-backed sink. Memory mapping is deferred to a later release; it would sit behind the same storage descriptor, with packed images as the natural target. The `Sink` interface exists so a file-backed sink can be added without touching kernels.
-- Packed and sparse images have no `[<-` method, view or not.
 - A sparse read is streamed a volume at a time only for volume-ordered data. Interleaved layouts, and bit data, are read densely and then converted.
 - Format adapters (NIfTI, ANALYZE, MGH, MRtrix) belong in the separate `imply.neuro` package, not here.
 - Interleaved (voxel-major) storage for dense images is designed for — the container carries general strides — but not implemented. Benchmark before adding: blocked traversal already recovers most of the benefit for whole-image sweeps.
