@@ -70,13 +70,10 @@ imreduce <- function (x, margin, what, na.rm = FALSE, threads = NULL)
     else if (isSparseImage(x))
         reduceOverMarginSparse(x@mask, x@values, x@dims, spatial(x), margin, what, na.rm, nThreads, layoutArg(x))
     else
-        reduceOverMargin(unclassArray(x), margin, what, na.rm, nThreads)
+        reduceOverMargin(if (isDenseImage(x)) as.array(x) else x, margin, what, na.rm, nThreads)
 
-    shapeReduction(values, dims[margin], margin, what, dimnames(x))
-}
-
-shapeReduction <- function (values, marginDims, margin, what, dimNames)
-{
+    marginDims <- dims[margin]
+    dimNames <- dimnames(x)
     marginNames <- if (!is.null(dimNames)) dimNames[margin] else NULL
     if (isAllNull(marginNames))
         marginNames <- NULL
@@ -87,10 +84,8 @@ shapeReduction <- function (values, marginDims, margin, what, dimNames)
     else if (what %in% c("any", "all"))
         values <- as.logical(values)
 
-    width <- if (what == "range") 2L else 1L
-
-    if (width > 1L)
-        return(array(values, c(width, marginDims),
+    if (what == "range")
+        return(array(values, c(2L, marginDims),
                      if (is.null(marginNames)) NULL
                      else c(list(NULL), marginNames)))
 

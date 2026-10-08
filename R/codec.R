@@ -263,25 +263,16 @@ readImageData <- function (con, descriptor, dims, geometry = NULL, as = c("auto"
     }
 
     dim(result) <- outDims
-    image <- denseImage(result, geometry = geometry)
-    if (as == "sparse")
-        image <- sparseFromDense(image, selected)
-    image
-}
-
-## A sparse image from a dense one, keeping exactly the locations selected if
-## a selection is given, and otherwise the non-zero ones
-sparseFromDense <- function (image, selected = NULL)
-{
+    if (as != "sparse")
+        return(denseImage(result, geometry = geometry))
     if (is.null(selected))
-        return(asSparse(image))
+        return(asSparse(denseImage(result, geometry = geometry)))
 
-    nSpatial <- spatial(image)
-    values <- as.array(image)
-    nLocations <- prod(dim(image)[seq_len(nSpatial)])
-    dim(values) <- c(nLocations, length(values) %/% max(nLocations, 1L))
-    sparseImage(mask = selected, values = t(values[selected, , drop = FALSE]), dim = dim(image),
-                geometry = image@geometry)
+    ## A sparse image keeping exactly the locations selected
+    nLocations <- prod(outDims[seq_len(nSpatial)])
+    dim(result) <- c(nLocations, length(result) %/% max(nLocations, 1L))
+    sparseImage(mask = selected, values = t(result[selected, , drop = FALSE]), dim = outDims,
+                geometry = geometry)
 }
 
 ## Closures over a connection for the compiled decoder. Plain files are
@@ -371,7 +362,16 @@ writeImageData <- function (image, con, descriptor)
         values <- as.array(image)
         if (is.na(descriptor@slope) || is.na(descriptor@intercept))
         {
-            chosen <- chooseScaling(values, type)
+            ## The narrow integer types get a scaling that uses their whole
+            ## range when the data need it, as for asPacked(); everything else
+            ## is written as it stands
+            chosen <- list(slope = 1, intercept = 0)
+            if (type %in% setdiff(storageTypes, "float32") && typeof(values) %in% c("logical", "integer", "double"))
+            {
+                summary <- valueRange(values)
+                if (is.finite(summary$low) && is.finite(summary$high))
+                    chosen <- calibrateStorage(type, summary$low, summary$high, summary$integral)
+            }
             descriptor@slope <- descriptor@slope %|NA|% chosen$slope
             descriptor@intercept <- descriptor@intercept %|NA|% chosen$intercept
         }
@@ -397,17 +397,4 @@ writeImageData <- function (image, con, descriptor)
     if (descriptor@type %in% names(colourChannels))
         descriptor@slope <- descriptor@intercept <- NA_real_
     invisible(descriptor)
-}
-
-## A scaling for writing: the narrow integer types get one that uses their
-## whole range when the data need it, as for asPacked(); everything else is
-## written as it stands
-chooseScaling <- function (values, type)
-{
-    if (!type %in% setdiff(storageTypes, "float32") || !typeof(values) %in% c("logical", "integer", "double"))
-        return(list(slope = 1, intercept = 0))
-    summary <- valueRange(values)
-    if (!is.finite(summary$low) || !is.finite(summary$high))
-        return(list(slope = 1, intercept = 0))
-    calibrateStorage(type, summary$low, summary$high, summary$integral)
 }

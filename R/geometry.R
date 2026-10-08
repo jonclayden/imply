@@ -282,8 +282,13 @@ worldTransform <- function (x)
     ## than an image whose transform is wanted
     if (isImage(x) || isImageGeometry(x) || !is.matrix(x))
     {
+        ## Recombines the rigid placement and the voxel size into the single
+        ## affine other packages expect; the inverse of decomposeTransform()
         geometry <- geometry(x)
-        composeTransform(geometry@orientation, geometry@voxelSize)
+        result <- geometry@orientation
+        for (i in seq_len(min(3L, length(geometry@voxelSize))))
+            result[1:3, i] <- result[1:3, i] * geometry@voxelSize[i]
+        result
     }
     else
         validateXform(x)
@@ -387,20 +392,6 @@ decomposeTransform <- function (xform, spatial)
     orientation[1:3, 4] <- xform[1:3, 4]
 
     list(orientation = orientation, voxelSize = norms[seq_len(spatial)])
-}
-
-## The inverse of decomposeTransform(): recombines a rigid placement and a
-## voxel size into the single affine other packages expect
-composeTransform <- function (orientation, voxelSize)
-{
-    result <- orientation
-    n <- min(3L, length(voxelSize))
-    if (n > 0L)
-    {
-        for (i in seq_len(n))
-            result[1:3, i] <- result[1:3, i] * voxelSize[i]
-    }
-    result
 }
 
 #' @rdname geometry

@@ -20,11 +20,6 @@ summaryFunctions <- c("sum", "max", "min", "range", "any", "all", "prod")
 
 zeroOf <- function (x) vector(typeof(x), 1L)
 
-## A length-one probe answering "what does this operation make of a location
-## that holds nothing?"
-absentResult <- function (op, first, second)
-    tryCatch(op(first, second), error = function (e) NULL)
-
 isStillAbsent <- function (value)
 {
     !is.null(value) && length(value) == 1L && !is.na(value) &&
@@ -43,18 +38,6 @@ denseFrom <- function (template, values)
 
 ## --- Binary operations -----------------------------------------------------
 
-sparseBinary <- function (op, e1, e2)
-{
-    first <- isSparseImage(e1)
-    second <- isSparseImage(e2)
-
-    if (first && second)
-        return(sparseWithSparse(op, e1, e2))
-    if (first)
-        return(sparseWithOther(op, e1, e2, sparseFirst = TRUE))
-    sparseWithOther(op, e2, e1, sparseFirst = FALSE)
-}
-
 sparseWithOther <- function (op, x, other, sparseFirst)
 {
     ## Anything but a single value has to be matched up position by position,
@@ -65,8 +48,10 @@ sparseWithOther <- function (op, x, other, sparseFirst)
         return(denseFrom(x, if (sparseFirst) op(dense, asComparable(other)) else op(asComparable(other), dense)))
     }
 
+    ## A length-one probe answering "what does this operation make of a
+    ## location that holds nothing?"
     zero <- zeroOf(x@values)
-    absent <- if (sparseFirst) absentResult(op, zero, other) else absentResult(op, other, zero)
+    absent <- tryCatch(if (sparseFirst) op(zero, other) else op(other, zero), error = function (e) NULL)
 
     if (!isStillAbsent(absent))
     {
@@ -87,7 +72,7 @@ sparseWithSparse <- function (op, e1, e2)
 
     ## Stored values can only be combined location by location when both
     ## images store their locations in the same order
-    absent <- absentResult(op, zeroOf(e1@values), zeroOf(e2@values))
+    absent <- tryCatch(op(zeroOf(e1@values), zeroOf(e2@values)), error = function (e) NULL)
     if (!isStillAbsent(absent) || !identical(e1@layout, e2@layout))
         return(denseFrom(e1, op(as.array(e1), as.array(e2))))
 
@@ -109,34 +94,6 @@ sparseWithSparse <- function (op, e1, e2)
 ## images; this keeps the storage mode of the operand rather than the operator
 asComparable <- function (x) if (isDenseImage(x)) as.array(x) else x
 
-## --- Unary and summary operations ------------------------------------------
-
-sparseMath <- function (fn, x, ...)
-{
-    zero <- zeroOf(x@values)
-    absent <- tryCatch(fn(zero, ...), error = function (e) NULL)
-
-    if (!isStillAbsent(absent))
-        return(denseFrom(x, fn(as.array(x), ...)))
-
-    rebuild(x, x@mask, fn(x@values, ...))
-}
-
-## Summaries can be answered from the stored values plus a single zero
-## standing for every absent location, which is what makes them cheap here.
-## tractor.base does the same for its Summary methods, and it is the one place
-## its sparse handling is not undone by densification
-sparseSummary <- function (fn, x, ..., na.rm = FALSE)
-{
-    absent <- locationCount(x) > maskCount(x@mask, locationCount(x))
-    values <- x@values
-
-    if (absent)
-        values <- c(values, zeroOf(values))
-
-    fn(values, ..., na.rm = na.rm)
-}
-
 ## --- Registration ----------------------------------------------------------
 
 ## Registering by hand would mean fifteen operators across three signatures,
@@ -155,7 +112,15 @@ registerSparseMethods <- function ()
         ## fixes this, at which point the workaround can go
         handler <- local({
             op <- generic
-            function (e1, e2) sparseBinary(op, e1, e2)
+            function (e1, e2)
+            {
+                if (isSparseImage(e1) && isSparseImage(e2))
+                    sparseWithSparse(op, e1, e2)
+                else if (isSparseImage(e1))
+                    sparseWithOther(op, e1, e2, sparseFirst = TRUE)
+                else
+                    sparseWithOther(op, e2, e1, sparseFirst = FALSE)
+            }
         })
 
         S7::`method<-`(generic, list(sparseImage, sparseImage), handler)
@@ -172,17 +137,33 @@ registerSparseMethods <- function ()
         generic <- get(name, baseenv())
         handler <- local({
             fn <- generic
-            function (x, ...) sparseMath(fn, x, ...)
+            function (x, ...)
+            {
+                absent <- tryCatch(fn(zeroOf(x@values), ...), error = function (e) NULL)
+                if (!isStillAbsent(absent))
+                    return(denseFrom(x, fn(as.array(x), ...)))
+                rebuild(x, x@mask, fn(x@values, ...))
+            }
         })
         S7::`method<-`(generic, sparseImage, handler)
     }
 
+    ## Summaries can be answered from the stored values plus a single zero
+    ## standing for every absent location, which is what makes them cheap
+    ## here. tractor.base does the same for its Summary methods, and it is the
+    ## one place its sparse handling is not undone by densification
     for (name in summaryFunctions)
     {
         generic <- get(name, baseenv())
         handler <- local({
             fn <- generic
-            function (x, ..., na.rm = FALSE) sparseSummary(fn, x, ..., na.rm = na.rm)
+            function (x, ..., na.rm = FALSE)
+            {
+                values <- x@values
+                if (locationCount(x) > maskCount(x@mask, locationCount(x)))
+                    values <- c(values, zeroOf(values))
+                fn(values, ..., na.rm = na.rm)
+            }
         })
         S7::`method<-`(generic, sparseImage, handler)
     }

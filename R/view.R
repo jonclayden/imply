@@ -63,7 +63,14 @@ reorient <- function (x, to = 1:3)
     if (!isImage(x))
         stop("Only an image can be reoriented")
 
-    to <- checkWorldAxes(to)
+    if (!is.numeric(to) || length(to) < 1L || length(to) > 3L || anyNA(to) || any(to != round(to)))
+        stop("World axes must be given as one to three signed integers, such as c(1, 2, 3)")
+    to <- as.integer(to)
+    if (any(to == 0L) || any(abs(to) > 3L))
+        stop("World axes must be numbered from 1 to 3, negated for the negative direction")
+    if (anyDuplicated(abs(to)))
+        stop("The target names the same world axis twice")
+
     geometry <- geometry(x)
     nSpatial <- min(3L, length(geometry@dims))
     axes <- worldAxes(geometry)
@@ -96,18 +103,6 @@ reorient <- function (x, to = 1:3)
     ## and reversing it reverses that
     layout <- x@layout[permutation] * ifelse(flips, -1L, 1L)
     S7::set_props(x, dims = x@dims[permutation], layout = as.integer(layout), geometry = newGeometry)
-}
-
-checkWorldAxes <- function (to)
-{
-    if (!is.numeric(to) || length(to) < 1L || length(to) > 3L || anyNA(to) || any(to != round(to)))
-        stop("World axes must be given as one to three signed integers, such as c(1, 2, 3)")
-    to <- as.integer(to)
-    if (any(to == 0L) || any(abs(to) > 3L))
-        stop("World axes must be numbered from 1 to 3, negated for the negative direction")
-    if (anyDuplicated(abs(to)))
-        stop("The target names the same world axis twice")
-    to
 }
 
 ## Permutes and reverses the spatial axes of a geometry, keeping every voxel

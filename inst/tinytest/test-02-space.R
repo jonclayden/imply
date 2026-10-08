@@ -24,12 +24,12 @@ expect_equal(decomposedLas$voxelSize, c(2, 2, 2))
 expect_equal(decomposedLas$orientation %*% diag(c(2, 2, 2, 1)), las)
 
 ## Recomposing gets back the original affine
-expect_equal(imply:::composeTransform(decomposedLas$orientation, decomposedLas$voxelSize), las)
+expect_equal(worldTransform(imageGeometry(c(4L, 4L, 4L), worldTransform = las)), las)
 
 ## Anisotropic, oblique voxel size and orientation round-trip too
 decomposedOblique <- imply:::decomposeTransform(oblique, 3L)
 expect_equal(decomposedOblique$voxelSize, c(1.2, 0.8, 3))
-expect_equal(imply:::composeTransform(decomposedOblique$orientation, decomposedOblique$voxelSize), oblique)
+expect_equal(worldTransform(imageGeometry(c(4L, 4L, 4L), worldTransform = oblique)), oblique)
 
 ## A genuinely sheared affine -- as might arise from a 12-parameter affine
 ## registration to a template space -- cannot be decomposed into rotation and

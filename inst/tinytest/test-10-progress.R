@@ -167,13 +167,7 @@ for (compact in list(packed, sparse))
     expect_true(calls > 0L)
 }
 
-## --- Interval --------------------------------------------------------------
-
-## Roughly a hundred updates, so the callback is never a meaningful part of
-## the cost, and never fewer than one call apart
-expect_equal(imply:::reportInterval(10000), 100L)
-expect_equal(imply:::reportInterval(50), 1L)
-expect_equal(imply:::reportInterval(1), 1L)
+## --- Ranges ----------------------------------------------------------------
 
 ## Ranges tile the call space exactly once, in order
 for (n in c(1L, 7L, 100L))

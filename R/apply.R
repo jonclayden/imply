@@ -93,7 +93,16 @@ imapply <- function (x, margin, fun, ..., simplify = TRUE, threads = NULL, progr
     ## a dummy sub-array to establish the type of an empty result, and the
     ## compiled kernels have nothing to say about that
     if (nCalls == 0L)
-        return(applyToEmpty(x, wrapped, callDims, callNames, marginDims, marginNames))
+    {
+        dummy <- array(vector(typeof(x), 1L), dim = c(prod(callDims), 1L))
+        value <- wrapped(if (length(callDims) < 2L) dummy[, 1L] else array(dummy[, 1L], callDims, callNames))
+
+        if (is.null(value))
+            return(value)
+        if (length(marginDims) < 2L)
+            return(value[1L][-1L])
+        return(array(value, marginDims, marginNames))
+    }
 
     ## A recognised reduction is answered by the compiled kernel instead, which
     ## avoids an interpreter call per sub-array and can use worker threads. The
@@ -107,7 +116,10 @@ imapply <- function (x, margin, fun, ..., simplify = TRUE, threads = NULL, progr
     if (!is.null(reporter))
         on.exit(reporter$close(), add = TRUE)
 
-    out <- runOverMargin(unclassArray(x), margin, wrapped, callNames, simplify,
+    ## Packed and sparse images are passed through untouched, since the
+    ## compiled loop reads them in place. Only a dense image needs unclassing,
+    ## which avoids any chance of a method being invoked during the loop
+    out <- runOverMargin(if (isDenseImage(x)) as.array(x) else x, margin, wrapped, callNames, simplify,
                          nCalls, resolveThreads(threads), reporter)
     shapeResult(out, marginDims, marginNames, margin, simplify)
 }
@@ -177,35 +189,6 @@ shapeResult <- function (out, marginDims, marginNames, margin, simplify)
     }
     else
         values
-}
-
-## When a margin has extent zero there is nothing to iterate over, but the
-## function is still called once on a dummy sub-array to establish the type of
-## the empty result
-applyToEmpty <- function (x, wrapped, callDims, callNames, marginDims, marginNames)
-{
-    dummy <- array(vector(typeof(x), 1L), dim = c(prod(callDims), 1L))
-    value <- wrapped(if (length(callDims) < 2L) dummy[, 1L] else array(dummy[, 1L], callDims, callNames))
-
-    if (is.null(value))
-        value
-    else if (length(marginDims) < 2L)
-        value[1L][-1L]
-    else
-        array(value, marginDims, marginNames)
-}
-
-## Packed and sparse images are passed through untouched, since the compiled
-## loop reads them in place. Only a dense image needs unclassing, which avoids
-## any chance of a method being invoked during the loop
-unclassArray <- function (x)
-{
-    if (isPackedImage(x) || isSparseImage(x))
-        x
-    else if (isDenseImage(x))
-        as.array(x)
-    else
-        x
 }
 
 #' @rdname imapply
@@ -326,36 +309,30 @@ maskedVoxelApply <- function (x, fun, ..., mask, fill, simplify, threads, progre
         progress <- function (done, total) reporter$report(done)
     }
 
-    input <- maskedInput(x, selected, index, nLocations, dims, nSpatial)
-    result <- imapply(input$data, input$margin, fun, ..., simplify = simplify,
-                      threads = threads, progress = progress)
-
-    scatterMasked(result, index, spatialDims, length(index), fill, x, nSpatial)
-}
-
-## The selected values, and the margin to apply over. Both layouts hand the
-## function the same vector; they differ only in which is cheaper to produce
-maskedInput <- function (x, selected, index, nLocations, dims, nSpatial)
-{
-    elements <- if (nSpatial < length(dims)) prod(dims[-seq_len(nSpatial)]) else 1L
-
-    ## The values a sparse image already holds, if they are the ones asked for
+    ## The selected values, and the margin to apply over. Both layouts hand the
+    ## function the same vector; they differ only in which is cheaper to
+    ## produce. A sparse image already holds them if its mask is the one given
     if (isSparseImage(x) && identical(as.vector(mask(x)), selected))
-        return(list(data = maskedMatrix(x), margin = 2L))
+    {
+        data <- maskedMatrix(x)
+        margin <- 2L
+    }
+    else
+    {
+        data <- as.array(asDense(x))
+        dim(data) <- c(nLocations, if (nSpatial < length(dims)) prod(dims[-seq_len(nSpatial)]) else 1L)
+        data <- data[index, , drop = FALSE]
+        margin <- 1L
+    }
 
-    values <- as.array(asDense(x))
-    dim(values) <- c(nLocations, elements)
-    list(data = values[index, , drop = FALSE], margin = 1L)
-}
+    result <- imapply(data, margin, fun, ..., simplify = simplify, threads = threads, progress = progress)
 
-## Put the answers back where they came from, leaving fill everywhere else
-scatterMasked <- function (result, index, spatialDims, nSelected, fill, x, nSpatial)
-{
-    if (!is.atomic(result) || length(result) %% nSelected != 0L)
+    ## Put the answers back where they came from, leaving fill everywhere else
+    if (!is.atomic(result) || length(result) %% length(index) != 0L)
         return(result)
 
-    perLocation <- length(result) %/% nSelected
-    full <- array(as.vector(fill, mode = typeof(result)), c(perLocation, prod(spatialDims)))
+    perLocation <- length(result) %/% length(index)
+    full <- array(as.vector(fill, mode = typeof(result)), c(perLocation, nLocations))
     full[, index] <- result
 
     if (perLocation == 1L)

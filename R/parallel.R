@@ -48,16 +48,6 @@ resolveThreads <- function (threads = NULL)
     threads
 }
 
-## Divide a number of calls into contiguous chunks, one per worker. The chunks
-## are half-open and zero-based, matching what the compiled side expects
-callChunks <- function (nCalls, nChunks)
-{
-    nChunks <- max(1L, min(as.integer(nChunks), nCalls))
-    size <- ceiling(nCalls / nChunks)
-    starts <- seq(0, nCalls - 1, by = size)
-    lapply(starts, function (start) c(start, min(start + size, nCalls)))
-}
-
 ## Reassemble what the workers produced. The pieces are in call order, so this
 ## is a concatenation; it only has to drop to a list if the workers disagreed
 ## about the shape of a result, which the serial path would also have done
@@ -79,54 +69,50 @@ combineParts <- function (parts)
                     elementLength = lengths[1L],
                     isList = FALSE))
 
-    list(values = unlist(lapply(parts, partAsList), recursive = FALSE, use.names = FALSE),
+    asLists <- lapply(parts, function (part) {
+        if (part$isList)
+            return(part$values)
+        n <- length(part$values) / part$elementLength
+        if (n == 0)
+            return(list())
+        unname(split(part$values, rep(seq_len(n), each = part$elementLength)))
+    })
+
+    list(values = unlist(asLists, recursive = FALSE, use.names = FALSE),
          elementLength = NA_real_,
          isList = TRUE)
-}
-
-partAsList <- function (part)
-{
-    if (part$isList)
-        return(part$values)
-
-    n <- length(part$values) / part$elementLength
-    if (n == 0)
-        return(list())
-    unname(split(part$values, rep(seq_len(n), each = part$elementLength)))
-}
-
-## One compiled loop serves all three representations; only the accessor it
-## reads through differs. A packed image is widened to double during the
-## gather, and an absent sparse location becomes a zero, so the function being
-## applied never learns how the image was stored
-marginRunner <- function (x, margin, wrapped, callNames, simplify)
-{
-    if (isPackedImage(x))
-        return(function (from, to, report, every)
-            applyOverMarginPacked(x@values, x@storageType, x@dims, margin, wrapped,
-                                  x@slope, x@intercept, callNames, simplify, from, to,
-                                  report, every, layoutArg(x)))
-    if (isSparseImage(x))
-        return(function (from, to, report, every)
-            applyOverMarginSparse(x@mask, x@values, x@dims, spatial(x), margin, wrapped,
-                                  callNames, simplify, from, to, report, every, layoutArg(x)))
-
-    function (from, to, report, every)
-        applyOverMargin(x, margin, wrapped, callNames, simplify, from, to, report, every)
 }
 
 ## Run the compiled loop over the whole call space, or over chunks of it in
 ## forked workers
 runOverMargin <- function (x, margin, wrapped, callNames, simplify, nCalls, threads, progress = NULL)
 {
-    run <- marginRunner(x, margin, wrapped, callNames, simplify)
+    ## One compiled loop serves all three representations; only the accessor
+    ## it reads through differs. A packed image is widened to double during
+    ## the gather, and an absent sparse location becomes a zero, so the
+    ## function being applied never learns how the image was stored
+    run <- if (isPackedImage(x))
+        function (from, to, report, every)
+            applyOverMarginPacked(x@values, x@storageType, x@dims, margin, wrapped,
+                                  x@slope, x@intercept, callNames, simplify, from, to,
+                                  report, every, layoutArg(x))
+    else if (isSparseImage(x))
+        function (from, to, report, every)
+            applyOverMarginSparse(x@mask, x@values, x@dims, spatial(x), margin, wrapped,
+                                  callNames, simplify, from, to, report, every, layoutArg(x))
+    else
+        function (from, to, report, every)
+            applyOverMargin(x, margin, wrapped, callNames, simplify, from, to, report, every)
+
+    ## Around a hundred updates is smooth without the callback itself becoming
+    ## part of the cost
     report <- if (is.null(progress)) NULL else progress$report
-    every <- if (is.null(progress)) 0 else reportInterval(nCalls)
+    every <- if (is.null(progress)) 0 else max(1L, as.integer(nCalls %/% 100L))
 
     if (threads <= 1L || nCalls <= 1L || !canFork())
         return(run(0, -1, report, every))
 
-    chunks <- callChunks(nCalls, threads)
+    chunks <- rangeChunks(0, nCalls, threads)
     if (length(chunks) == 1L)
         return(run(0, -1, report, every))
 
