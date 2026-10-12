@@ -115,6 +115,8 @@ sparseImage <- S7::new_class("sparseImage",
             timeUnit = as.character(timeUnit %||% attr(template, "timeUnit") %||% "unknown"))
     })
 
+methods::setClassUnion("imply_atomic",
+    c("logical", "integer", "numeric", "complex", "character", "raw"))
 S7::S4_register(sparseImage)
 
 #' @rdname sparseImage
