@@ -94,6 +94,16 @@ sparseWithSparse <- function (op, e1, e2)
 ## images; this keeps the storage mode of the operand rather than the operator
 asComparable <- function (x) if (isDenseImage(x)) as.array(x) else x
 
+## A function of one image is applied to the stored values alone if it leaves
+## an absent location absent, and to the materialised array otherwise
+sparseMath <- function (fn, x, ...)
+{
+    absent <- tryCatch(fn(zeroOf(x@values), ...), error = function (e) NULL)
+    if (!isStillAbsent(absent))
+        return(denseFrom(x, fn(as.array(x), ...)))
+    rebuild(x, x@mask, fn(x@values, ...))
+}
+
 ## --- Registration ----------------------------------------------------------
 
 ## Registering by hand would mean fifteen operators across three signatures,
@@ -105,11 +115,6 @@ registerSparseMethods <- function ()
     for (name in binaryOperators)
     {
         generic <- get(name, baseenv())
-        ## Only the binary forms are reachable. R resolves a unary minus
-        ## through S3 group dispatch, which finds S7's own Ops.S7_object
-        ## before any method registered here, so `-x` is not available; write
-        ## `0 - x` or `x * -1`, both of which stay sparse. RConsortium/S7#490
-        ## fixes this, at which point the workaround can go
         handler <- local({
             op <- generic
             function (e1, e2)
@@ -137,16 +142,24 @@ registerSparseMethods <- function ()
         generic <- get(name, baseenv())
         handler <- local({
             fn <- generic
-            function (x, ...)
-            {
-                absent <- tryCatch(fn(zeroOf(x@values), ...), error = function (e) NULL)
-                if (!isStillAbsent(absent))
-                    return(denseFrom(x, fn(as.array(x), ...)))
-                rebuild(x, x@mask, fn(x@values, ...))
-            }
+            function (x, ...) sparseMath(fn, x, ...)
         })
         S7::`method<-`(generic, sparseImage, handler)
     }
+
+    ## Unary plus and minus are dispatched on a missing second operand. Minus
+    ## leaves zero alone and so stays sparse; `!` turns it into TRUE, and so
+    ## gives a dense result
+    for (name in c("+", "-"))
+    {
+        generic <- get(name, baseenv())
+        handler <- local({
+            op <- generic
+            function (e1, e2) sparseMath(op, e1)
+        })
+        S7::`method<-`(generic, list(sparseImage, S7::class_missing), handler)
+    }
+    S7::`method<-`(base::`!`, sparseImage, function (e1) sparseMath(`!`, e1))
 
     ## Summaries can be answered from the stored values plus a single zero
     ## standing for every absent location, which is what makes them cheap
@@ -167,12 +180,6 @@ registerSparseMethods <- function ()
         })
         S7::`method<-`(generic, sparseImage, handler)
     }
-
-    ## NB: `!` cannot currently be registered. S7 does not count it as a member
-    ## of the Ops group, which is a bug rather than a design boundary, and is
-    ## fixed along with unary minus by RConsortium/S7#490. That branch is
-    ## approved but conflicted, so until it lands use `x == 0`, or negate the
-    ## materialised array
 
     S7::`method<-`(base::mean, sparseImage,
                function (x, ...) sum(x, ...) / length(x))

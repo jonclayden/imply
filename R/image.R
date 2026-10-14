@@ -147,10 +147,6 @@ S7::method(print, denseImage) <- function (x, ...)
     invisible(x)
 }
 
-S7::method(as.array, denseImage) <- function (x, ...)
-{
-    for (name in c("geometry", "S7_class"))
-        attr(x, name) <- NULL
-    class(x) <- NULL
-    x
-}
+## S7_data() drops the properties and S7's own bookkeeping attributes, whose
+## names are internal to S7 and changed in 1.0, so they are not listed here
+S7::method(as.array, denseImage) <- function (x, ...) S7::S7_data(x)

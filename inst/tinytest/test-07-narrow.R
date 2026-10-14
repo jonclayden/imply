@@ -187,6 +187,10 @@ expect_true(isDenseImage(2 * f))
 expect_equal(as.array(2 * f), 2 * unpacked)
 expect_true(isDenseImage(f - f))
 expect_equal(as.array(f - f), unpacked - unpacked)
+expect_true(isDenseImage(-f))
+expect_equal(as.array(-f), -unpacked)
+expect_equal(as.array(+f), unpacked)
+expect_identical(as.array(!f), !unpacked)
 
 ## Mixing with a dense image works in both directions
 expect_equal(as.array(f * image), unpacked * values)

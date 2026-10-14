@@ -119,8 +119,6 @@ imageGeometry <- S7::new_class("imageGeometry",
             unit = as.character(unit %||% "unknown"))
     })
 
-S7::S4_register(imageGeometry)
-
 S7::method(print, imageGeometry) <- function (x, ...)
 {
     cat(sprintf("Image geometry: %s\n", if (length(x@dims) == 0L) "no spatial dimensions"

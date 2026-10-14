@@ -96,8 +96,6 @@ sparseImage <- S7::new_class("sparseImage",
             geometry = geometry)
     })
 
-S7::S4_register(sparseImage)
-
 #' @rdname sparseImage
 #' @export
 isSparseImage <- function (x) S7::S7_inherits(x, sparseImage)
