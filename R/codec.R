@@ -114,10 +114,11 @@ colourChannels <- c(rgb24 = 3L, rgba32 = 4L)
 #' Reading and writing image data
 #'
 #' `readImageData()` reads the values of an image from a connection, as
-#' described by a [storageDescriptor()], and returns an image. `writeImageData()`
-#' writes them. Neither knows anything about file formats, which are the
-#' business of packages built on this one: a format package parses its header,
-#' builds a descriptor and a geometry, and calls these to handle the data.
+#' described by a [storageDescriptor()], and returns an image.
+#' `writeImageData()` writes them. Neither knows anything about file formats,
+#' which are the business of packages built on this one: a format package
+#' parses any header or metadata, builds a descriptor and a geometry, and calls
+#' these to handle the data.
 #'
 #' Bytes are read through R connections, so compressed streams need nothing
 #' special: [gzfile()] reads gzipped and plain files alike. They are read in
@@ -125,17 +126,17 @@ colourChannels <- c(rgb24 = 3L, rgba32 = 4L)
 #' cannot be read backwards, so volumes are always read in the order they are
 #' stored, whatever order they are asked for in.
 #'
-#' The image comes back dense, packed or sparse, as `as` says. The default,
-#' `"auto"`, gives a sparse image if a `mask` is given; otherwise a packed image
-#' if the stored type is one a [packedImage] can hold, keeping the file's own
-#' narrow representation and scaling; and otherwise a dense image. The class
-#' returned therefore depends on the data, so code that relies on one should
-#' ask for it.
+#' The image comes back dense, packed or sparse, according to the `as`
+#' argument. The default, `"auto"`, gives a sparse image if a `mask` is given;
+#' otherwise a packed image if the stored type is one a [packedImage] can hold,
+#' keeping the file's narrow representation and scaling; and otherwise a dense
+#' image. The class returned therefore depends on the data, so code that relies
+#' on a specific class should ask for it.
 #'
-#' A packed image keeps the stream's own order, with the layout recording how
-#' its axes map onto it, so no data is moved; see [reorient()]. A dense image
-#' is always in its own axis order, so a stream in any other order is
-#' rearranged as it is read.
+#' A packed image keeps the stream's order, with the layout recording how its
+#' axes map onto it, so no data is moved; see [reorient()]. A dense image is
+#' always in its own axis order, so a stream in any other order is rearranged
+#' as it is read.
 #'
 #' A sparse image keeps exactly the locations selected by `mask`, if one is
 #' given, and otherwise those where any value is non-zero. Only volume-ordered

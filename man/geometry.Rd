@@ -106,11 +106,10 @@ values; \code{center()} is an alias. \code{extent()} returns the physical size o
 the grid along each spatial axis. \code{sameGeometry()} returns a Boolean
 value, which is \code{TRUE} if the two grids are the same size and are placed
 identically in world space, up to \code{tolerance}; units are compared only if
-both are known.
-\code{toVoxel()} and \code{fromVoxel()} return matrices of transformed points, one
-per row. Voxel coordinates have as many columns as \code{points}, and world
-or scaled coordinates always have three. The assignment functions are
-called for their side-effects.
+both are known. \code{toVoxel()} and \code{fromVoxel()} return matrices of
+transformed points, one per row. Voxel coordinates have as many columns as
+\code{points}, and world or scaled coordinates always have three. The
+assignment functions are called for their side-effects.
 }
 \description{
 An image geometry describes the spatial grid an image is sampled on,
@@ -128,21 +127,12 @@ interpretation is free to leave it at the identity default and never think
 about it again.
 
 Voxel size and world placement are stored, and can be set, independently of
-one another, unlike a NIfTI xform, which bakes voxel size into the same
-matrix that carries rotation and translation and so has to be kept in sync
-by hand. Here, \verb{voxelSize<-} never touches rotation or translation, and
-the stored placement is always a rigid transform (rotation or reflection
-plus translation; no scale and no shear) so that the two cannot drift out
-of agreement.
-
-\code{worldTransform()} composes the two into the single 4x4 affine that other
-packages expect. Setting it back decomposes the matrix into rotation and
-scale; a matrix that doesn't decompose that way (i.e. one with genuine
-shear) is rejected rather than silently mangled. In practice a sheared
-NIfTI \code{sform} usually means the field is being used to carry an affine
-registration or normalisation result (to Talairach or MNI space, say)
-rather than to describe voxel storage geometry, which is a different kind
-of information than this package models.
+one another. The stored placement is always a rigid transform: rotation or
+reflection plus translation; no scale and no shear. \code{worldTransform()}
+composes the two into the single 4x4 affine that some other packages expect.
+Setting it back decomposes the matrix into rotation and scale; a matrix that
+doesn't decompose that way (i.e., one with genuine shear) is rejected rather
+than silently mangled.
 
 \code{toVoxel()} and \code{fromVoxel()} use one-based voxel coordinates, matching
 \code{x[i, j, k]} indexing. The affine itself, and the rest of the package's C++

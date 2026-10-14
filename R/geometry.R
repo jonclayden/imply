@@ -14,21 +14,12 @@
 #' about it again.
 #'
 #' Voxel size and world placement are stored, and can be set, independently of
-#' one another, unlike a NIfTI xform, which bakes voxel size into the same
-#' matrix that carries rotation and translation and so has to be kept in sync
-#' by hand. Here, `voxelSize<-` never touches rotation or translation, and
-#' the stored placement is always a rigid transform (rotation or reflection
-#' plus translation; no scale and no shear) so that the two cannot drift out
-#' of agreement.
-#'
-#' `worldTransform()` composes the two into the single 4x4 affine that other
-#' packages expect. Setting it back decomposes the matrix into rotation and
-#' scale; a matrix that doesn't decompose that way (i.e. one with genuine
-#' shear) is rejected rather than silently mangled. In practice a sheared
-#' NIfTI `sform` usually means the field is being used to carry an affine
-#' registration or normalisation result (to Talairach or MNI space, say)
-#' rather than to describe voxel storage geometry, which is a different kind
-#' of information than this package models.
+#' one another. The stored placement is always a rigid transform: rotation or
+#' reflection plus translation; no scale and no shear. `worldTransform()`
+#' composes the two into the single 4x4 affine that some other packages expect.
+#' Setting it back decomposes the matrix into rotation and scale; a matrix that
+#' doesn't decompose that way (i.e., one with genuine shear) is rejected rather
+#' than silently mangled.
 #'
 #' `toVoxel()` and `fromVoxel()` use one-based voxel coordinates, matching
 #' `x[i, j, k]` indexing. The affine itself, and the rest of the package's C++
@@ -71,11 +62,10 @@
 #'   the grid along each spatial axis. `sameGeometry()` returns a Boolean
 #'   value, which is `TRUE` if the two grids are the same size and are placed
 #'   identically in world space, up to `tolerance`; units are compared only if
-#'   both are known.
-#'   `toVoxel()` and `fromVoxel()` return matrices of transformed points, one
-#'   per row. Voxel coordinates have as many columns as `points`, and world
-#'   or scaled coordinates always have three. The assignment functions are
-#'   called for their side-effects.
+#'   both are known. `toVoxel()` and `fromVoxel()` return matrices of
+#'   transformed points, one per row. Voxel coordinates have as many columns as
+#'   `points`, and world or scaled coordinates always have three. The
+#'   assignment functions are called for their side-effects.
 #' @name geometry
 NULL
 

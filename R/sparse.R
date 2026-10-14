@@ -8,12 +8,7 @@
 #'
 #' The mask is one bit per location and the values are packed in location
 #' order, so finding a value costs a table lookup and a bit count rather than a
-#' search. A coordinate list, the other common representation, would store
-#' three or four indices alongside every value, and may cost more memory than
-#' saves at typical densities.
-#'
-#' A location holding `NA` is kept, since `NA` is not zero. Packing an image
-#' therefore loses nothing.
+#' search. A location holding `NA` is kept, since `NA` is not zero.
 #'
 #' A sparse image can be indexed and assigned to like an array. Assignment
 #' keeps the mask accurate: a location given a non-zero value is added, and one

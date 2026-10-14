@@ -26,8 +26,8 @@ Work is parallelised in one of two ways, according to what is being run.
 }
 \details{
 Compiled kernels run concurrently in process, using Grand Central Dispatch
-or OpenMP where one or other is available. Which of these was compiled in
-is reported by \code{parallelBackend()}.
+or OpenMP where one or the other is available. Which of these was compiled
+in is reported by \code{parallelBackend()}.
 
 An R function cannot be called from a worker thread, because R is
 single-threaded and its interpreter is not reentrant. Applying an R function
@@ -38,6 +38,6 @@ such work runs serially; the alternative, a socket cluster, would copy the
 whole image to every worker and so defeat the purpose.
 
 The number of threads may be given per call, or set globally with
-\code{options(imply.threads = n)}. Leaving both unset means serial, for compiled
+\code{options(imply.threads=n)}. Leaving both unset means serial, for compiled
 kernels and R functions alike. Multi-core use is opt-in.
 }
