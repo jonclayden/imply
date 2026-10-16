@@ -149,8 +149,7 @@ S7::method(print, denseImage) <- function (x, ...)
 
 S7::method(as.array, denseImage) <- function (x, ...)
 {
-    for (name in c("geometry", "S7_class"))
-        attr(x, name) <- NULL
+    x <- S7::S7_data(x)
     class(x) <- NULL
     x
 }

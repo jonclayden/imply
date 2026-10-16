@@ -96,6 +96,8 @@ sparseImage <- S7::new_class("sparseImage",
             geometry = geometry)
     })
 
+methods::setClassUnion("imply_atomic",
+    c("logical", "integer", "numeric", "complex", "character", "raw"))
 S7::S4_register(sparseImage)
 
 #' @rdname sparseImage
