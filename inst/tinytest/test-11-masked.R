@@ -142,3 +142,21 @@ expect_false(is.na(as.array(voxelApply(denseImage(withMissing), function (v) mea
 expect_equal(as.array(voxelApply(asPacked(image, "float32"), function (v) mean(v), mask = brain)),
              as.array(voxelApply(image, function (v) mean(v), mask = brain)),
              tolerance = 1e-6)
+
+## --- Mask coercion ---------------------------------------------------------
+
+## Every accepted form of mask reduces to the same logical vector
+brainVector <- as.vector(brain)
+expect_identical(asMaskVector(brain, spatialDims), brainVector)
+expect_identical(asMaskVector(brain * 5, spatialDims), brainVector)
+expect_identical(asMaskVector(denseImage(brain), spatialDims), brainVector)
+expect_identical(asMaskVector(asSparse(denseImage(brain * 1)), spatialDims), brainVector)
+expect_identical(asMaskVector(packed, spatialDims), brainVector)
+
+## The spatial dimensions may be taken from an image or a geometry instead
+expect_identical(asMaskVector(brain, image), brainVector)
+expect_identical(asMaskVector(brain, geometry(image)), brainVector)
+
+expect_error(asMaskVector(brain, c(8L, 7L, 5L)), "one element per spatial location")
+expect_error(asMaskVector(array("a", spatialDims), spatialDims), "logical array, a numeric array, or an image")
+expect_error(asMaskVector(array(NA, spatialDims), spatialDims), "missing values")

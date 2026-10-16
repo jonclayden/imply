@@ -5,6 +5,7 @@
 #include "imply/Dispatch.h"
 #include "imply/RImage.h"
 #include "imply/Sparse.h"
+#include "imply/View.h"
 
 using namespace imply;
 
@@ -106,17 +107,31 @@ Rcpp::List denseToSparse (Rcpp::RObject x, Rcpp::Nullable<Rcpp::IntegerVector> s
     return result;
 }
 
+// The dense array, in view order when a layout is given. The dimensions are
+// the view's; a layout for a sparse image only ever reorders or reverses the
+// spatial axes among themselves, so locations and elements are unaffected
 // [[Rcpp::export]]
-SEXP sparseToDense (Rcpp::RawVector mask, Rcpp::RObject values, Rcpp::IntegerVector dim, int spatial)
+SEXP sparseToDense (Rcpp::RawVector mask, Rcpp::RObject values, Rcpp::IntegerVector dim, int spatial,
+                    SEXP layout = R_NilValue)
 {
     std::vector<Extent> dims(dim.begin(), dim.end());
     const Shape s = shapeOf(dims, spatial);
     const LocationMask bits(mask, s.locations);
+    const std::vector<int> order = layoutFrom(layout);
 
     return dispatchType(values, [&](auto tag, auto *packed) -> SEXP {
         typedef decltype(tag) Tag;
 
         Rcpp::Vector<Tag::sexpType> result(static_cast<R_xlen_t>(s.locations * s.elements));
+
+        if (!order.empty())
+        {
+            const ViewMap view(dims, order);
+            gatherView(SparseAccessor<typename Tag::Type>(bits, packed, s.elements), view, result.begin());
+            result.attr("dim") = dim;
+            return result;
+        }
+
         std::fill(result.begin(), result.end(), typename Tag::Type());
 
         for (Extent i=0; i<s.locations; i++)

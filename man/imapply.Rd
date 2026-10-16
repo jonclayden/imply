@@ -58,9 +58,9 @@ sliceApply(
 the percentage complete and the rate in voxels per second, or a function
 of \verb{(done, total)}.}
 
-\item{mask}{For \code{voxelApply()}, a logical array over the spatial dimensions,
-a sparse image whose mask is to be used, or \code{NULL} for none. Locations
-outside it are not visited at all.}
+\item{mask}{For \code{voxelApply()}, a logical or numeric array over the
+spatial dimensions, an image, or \code{NULL} for none; see \code{\link[=asMaskVector]{asMaskVector()}}.
+Locations outside it are not visited at all.}
 
 \item{fill}{The value given to locations outside \code{mask}.}
 
@@ -68,8 +68,13 @@ outside it are not visited at all.}
 the axis slices cut across.}
 }
 \value{
-For \code{imapply()}, as \code{\link[base:apply]{base::apply()}}. For \code{voxelApply()}, an image
-when the function returns a single value per location, otherwise an array.
+For \code{imapply()}, as \code{\link[base:apply]{base::apply()}}. For \code{voxelApply()},
+\code{lineApply()} and \code{sliceApply()} applied to an image, a dense image when
+the function returns a single value per location, line or slice,
+respectively, and otherwise as for \code{imapply()}. The geometry of the
+result is that of \code{x} with the axes traversed removed, each remaining
+location being placed at the centre of the line or slice it summarises,
+so \code{\link[=centre]{centre()}} is unchanged. A plain array in gives a plain array out.
 }
 \description{
 \code{imapply()} is a memory-efficient analogue of \code{\link[base:apply]{base::apply()}}. It gives the

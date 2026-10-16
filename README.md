@@ -40,7 +40,7 @@ remotes::install_github("jonclayden/imply")
 
 The back-end allows functions applied to images to target all of these image forms efficiently without specialisation for each type.
 
-A `denseImage` wraps an array with some geometry attached: how many of the leading dimensions are spatial, the size of a voxel, and the 4x4 affine matrix mapping voxel to world coordinates. The latter can be ignored where it isn't important.
+Every image holds an `imageGeometry`, which describes the spatial grid it is sampled on: the extent of the grid (and so how many of the leading dimensions are spatial), the size of a voxel, the 4x4 affine matrix mapping voxel to world coordinates, and the unit of measurement. The latter can be ignored where it isn't important. A `denseImage` wraps an array with a geometry attached.
 
 
 ``` r
@@ -83,6 +83,23 @@ fromVoxel(c(1, 1, 1), image)
 toVoxel(fromVoxel(c(1, 1, 1), image), image)
 ##      [,1] [,2] [,3]
 ## [1,]    1    1    1
+```
+
+`geometry()` extracts the geometry itself, which is useful on its own to describe a grid that no image occupies yet, such as the target of a resampling. Every geometry function accepts either an image or a bare geometry.
+
+
+``` r
+grid <- geometry(image)
+grid
+## Image geometry: 4 x 5 x 6
+##   Spatial dimensions : 4 x 5 x 6
+##   Voxel size         : 2 x 2 x 2.5 (unit unknown)
+centre(grid)
+## [1] 3.00 4.00 6.25
+extent(grid)
+## [1]  8 10 15
+sameGeometry(grid, imageGeometry(c(4, 5, 6), voxelSize = c(2, 2, 2.5)))
+## [1] TRUE
 ```
 
 Because a `denseImage` is a plain array underneath, ordinary R operations — indexing, arithmetic, comparison — work on it directly and return a plain array, since an arbitrary index or elementwise result has no well-defined geometry of its own.
@@ -151,13 +168,55 @@ isPackedImage(packed)
 ## [1] TRUE
 ```
 
-A `template` argument, accepted by all three constructors and by `asDense()`/`asSparse()`/`asPacked()`, carries geometry over from an existing image when only the data is changing.
+A `geometry` argument, accepted by all three constructors and by `asDense()`/`asSparse()`/`asPacked()`, carries geometry over from an existing image, or a bare geometry, when only the data is changing. The grid must match the leading dimensions of the data.
 
 
 ``` r
-doubled <- denseImage(as.array(image) * 2, template = image)
+doubled <- denseImage(as.array(image) * 2, geometry = image)
 voxelSize(doubled)
 ## [1] 2.0 2.0 2.5
+```
+
+### Orientation
+
+`worldAxes()` reports which world axis each spatial axis runs along, as a signed integer: `c(-1, 2, 3)` means the first index increases along the negative first world axis, and the others along the positive second and third. `reorient()` permutes and reverses axes to match another such order, by default all positive and in order, keeping every voxel where it is in world space. For packed and sparse images this changes only how the image's axes map onto its storage, so no data are moved; a dense image, being a plain array, is copied. imply attaches no meaning to the world axes, so domain conventions such as neuroimaging's anatomical orientation codes are left to packages built on it.
+
+
+``` r
+tilted <- asPacked(denseImage(data, worldTransform = diag(c(-2, 2, 2.5, 1))), "float32")
+worldAxes(tilted)
+## [1] -1  2  3
+aligned <- reorient(tilted)
+worldAxes(aligned)
+## [1] 1 2 3
+identical(aligned@values, tilted@values) # the same bytes, viewed differently
+## [1] TRUE
+```
+
+## Reading and writing image data
+
+imply knows no file formats, but it does know how to turn a stream of bytes into an image and back. A `storageDescriptor()` says how the values are stored: their type, byte order, offset, scaling and axis order. A format package parses its own header into one, and `readImageData()` and `writeImageData()` do the rest, through R connections, so gzipped streams need nothing special.
+
+
+``` r
+file <- tempfile(fileext = ".gz")
+descriptor <- storageDescriptor("int16", endian = "big", offset = 16)
+used <- writeImageData(image, file, descriptor) # chooses a scaling, and says what it chose
+readImageData(file, used, dim(image), geometry = image)
+## Packed image: 4 x 5 x 6 x 10 (int16)
+##   Spatial dimensions : 4 x 5 x 6
+##   Voxel size         : 2 x 2 x 2.5 (unit unknown)
+##   Values per location: 10
+##   Scaling            : value = stored * 0.000107171 + 0.298598
+##   Storage            : 2,400 bytes, against 9,600 as double
+```
+
+By default the result is packed if the stored type allows, keeping the file's own narrow representation, or sparse if a `mask` is given, in which case the dense array never exists. Individual volumes can be read on their own, without reading the rest.
+
+
+``` r
+dim(readImageData(file, used, dim(image), as = "dense", volumes = c(1, 5)))
+## [1] 4 5 6 2
 ```
 
 ## Applying and reducing functions
@@ -187,7 +246,11 @@ dim(lineMeans)
 ## [1] 4 5 6
 
 sliceMeans <- sliceApply(image, mean, axis = 3)
-sliceMeans
+sliceMeans # likewise one value per slice, placed at the centre of each slice
+## Dense image: 6 (double)
+##   Spatial dimensions : 6
+##   Voxel size         : 2.5 (unit unknown)
+as.vector(sliceMeans)
 ## [1] -0.028966835 -0.074629673  0.013742921 -0.078449109 -0.006249744
 ## [6]  0.035189006
 ```
@@ -264,7 +327,7 @@ The pieces most likely to be wanted from outside are as follows.
 
 - **`Raster<D>`** — an *n*-dimensional index space with general strides, split at a runtime `spatial` index into leading spatial dimensions and trailing value dimensions. `FixedRaster<D>` keeps extents and indices on the stack when the dimensionality is known while compiling; `DynamicRaster` covers other cases.
 - **`OffsetWalker`** — odometer traversal of an arbitrary subset of an image's dimensions, yielding memory offsets one addition at a time with no allocation. This is what lets a sub-array be gathered without permuting the whole image first.
-- **`ImageSpace`** and **`Affine`** — voxel-to-world geometry, with the point conversions and rounding strategies that go with it, and no dependency on any file format.
+- **`ImageSpace`** and **`Affine`** — voxel-to-world geometry, matching the R `imageGeometry` class, with the point conversions and rounding strategies that go with it, and no dependency on any file format.
 - **`parallelFor`** — divides a range into chunks and runs them concurrently using libdispatch, OpenMP or a plain loop, whichever was compiled in. Nothing passed to it may touch the R API, allocate R objects, or draw from R's RNG, none of which are thread-safe.
 - **`dispatchType`**, **`dispatchNarrowType`** and **`dispatchDims`** — the R-boundary switches from a runtime `SEXP`'s storage mode (or dimensionality) to a compile-time type tag, meant to be called exactly once per entry point so that everything below it is fully typed.
 - **`DenseAccessor`**, **`SparseAccessor`** and **`NarrowAccessor`**, plus **`LocationMask`** — an `operator[]` over a plain pointer, a masked and packed array, or narrow storage, respectively, sharing one interface so that a kernel written against it serves all three without modification.

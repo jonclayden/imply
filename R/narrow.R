@@ -13,6 +13,13 @@
 #' The values live in a raw vector, so they are garbage-collected, serialise,
 #' and survive a save and load like any other R object.
 #'
+#' A packed image can be indexed and assigned to like an array, reading and
+#' writing only the values concerned. Assigned values are stored under the
+#' image's existing type and scaling, and so rounded to its resolution; a
+#' value the scaling cannot reach, or a missing value in an integer type, is
+#' an error, since rescaling to fit would change every other value too. Use
+#' [asDense()], or repack with `asPacked()`, to store such values.
+#'
 #' @note Missing values can only be carried by `float32`; packing data
 #' containing `NA` to an integer type is refused rather than silently losing
 #' it. Note that `NA` and `NaN` are not distinguished once packed, since the
@@ -24,9 +31,12 @@
 #' @param slope,intercept Scaling applied to stored values. Chosen
 #'   automatically when not given.
 #' @param values A raw vector holding the packed values.
-#' @param dims,spatial,voxelSize,worldTransform,spaceUnit,timeUnit Image
-#'   geometry, as for [denseImage()].
-#' @param template An image to take unspecified geometry from.
+#' @param dims The full dimensions of the image.
+#' @param spatial,voxelSize,worldTransform,unit,geometry Image geometry, as
+#'   for [denseImage()].
+#' @param layout How the image's axes map onto the order of `values`, as
+#'   described for [storageLayout()]. The default is the identity, meaning
+#'   that `values` are in the image's own axis order.
 #' @param ... Further arguments to `denseImage()`.
 #' @return An object of S7 class `packedImage` representing an image using a
 #'   narrow, packed data representation, with properties corresponding to the
@@ -47,15 +57,10 @@ packedImage <- S7::new_class("packedImage",
         slope = S7::class_double,
         intercept = S7::class_double,
         dims = S7::class_integer,
-        spatial = S7::class_integer,
-        voxelSize = S7::class_double,
-        orientation = S7::class_double,
-        spaceUnit = S7::class_character,
-        timeUnit = S7::class_character
+        layout = S7::class_integer,
+        geometry = imageGeometry
     ),
     validator = function (self) {
-        nDims <- length(self@dims)
-
         if (length(self@storageType) != 1L || !self@storageType %in% storageTypes)
             return(paste0("@storageType must be one of ", paste(storageTypes, collapse = ", ")))
         if (length(self@slope) != 1L || is.na(self@slope) || self@slope == 0)
@@ -63,47 +68,23 @@ packedImage <- S7::new_class("packedImage",
         if (length(self@intercept) != 1L || is.na(self@intercept))
             return("@intercept must be a single value")
 
-        if (length(self@spatial) != 1L || is.na(self@spatial))
-            return("@spatial must be a single value")
-        if (self@spatial < 0L || self@spatial > nDims)
-            return(paste0("@spatial must be between 0 and ", nDims))
+        if (anyNA(self@dims) || any(self@dims < 0L))
+            return("@dims must not be missing or negative")
+        mismatch <- geometryMismatch(self@geometry, self@dims) %||% checkLayout(self@layout, length(self@dims))
+        if (!is.null(mismatch))
+            return(mismatch)
 
         expected <- prod(self@dims) * storageTypeSize[[self@storageType]]
         if (length(self@values) != expected)
             return("@values is not the right length for the stated dimensions and storage type")
 
-        if (length(self@voxelSize) != self@spatial)
-            return(paste0("@voxelSize must have one element per spatial dimension (", self@spatial, ")"))
-        if (anyNA(self@voxelSize))
-            return("@voxelSize must not be missing")
-        if (any(self@voxelSize <= 0))
-            return("@voxelSize must be strictly positive")
-
-        if (!identical(dim(self@orientation), c(4L, 4L)))
-            return("@orientation must be a 4x4 matrix")
-        if (anyNA(self@orientation))
-            return("@orientation must not contain missing values")
-        if (!isTRUE(all.equal(self@orientation[4, ], c(0, 0, 0, 1))))
-            return("@orientation must be affine, with a final row of (0, 0, 0, 1)")
-        block <- self@orientation[1:3, 1:3, drop = FALSE]
-        if (max(abs(crossprod(block) - diag(3))) > orthogonalityTolerance)
-            return("@orientation must be rigid: a rotation or reflection, with no scale or shear")
-
         NULL
     },
     constructor = function (values, storageType, dims, slope = 1, intercept = 0, spatial = NULL,
-                            voxelSize = NULL, worldTransform = NULL, spaceUnit = NULL, timeUnit = NULL,
-                            template = NULL)
+                            voxelSize = NULL, worldTransform = NULL, unit = NULL, geometry = NULL,
+                            layout = NULL)
     {
         dims <- as.integer(dims)
-        nDims <- length(dims)
-        spatial <- as.integer(spatial %||% attr(template, "spatial") %||% min(3L, nDims))
-
-        decomposed <- if (is.null(worldTransform)) NULL
-                      else decomposeTransform(validateXform(worldTransform), spatial)
-        orientation <- decomposed$orientation %||% attr(template, "orientation") %||% diag(4)
-        voxelSize <- as.double(voxelSize %||% decomposed$voxelSize %||%
-                               attr(template, "voxelSize") %||% rep(1, max(spatial, 0L)))
 
         S7::new_object(S7::S7_object(),
             values = values,
@@ -111,11 +92,8 @@ packedImage <- S7::new_class("packedImage",
             slope = as.double(slope),
             intercept = as.double(intercept),
             dims = dims,
-            spatial = spatial,
-            voxelSize = voxelSize,
-            orientation = orientation,
-            spaceUnit = as.character(spaceUnit %||% attr(template, "spaceUnit") %||% "unknown"),
-            timeUnit = as.character(timeUnit %||% attr(template, "timeUnit") %||% "unknown"))
+            layout = as.integer(layout %||% seq_along(dims)),
+            geometry = resolveGeometry(dims, spatial, voxelSize, worldTransform, unit, geometry))
     })
 
 S7::S4_register(packedImage)
@@ -153,8 +131,7 @@ asPacked <- function (x, type = "float32", slope = NULL, intercept = NULL, ...)
 
     packedImage(values = packNarrow(values, type, slope, intercept),
                 storageType = type, dims = dim(image), slope = slope, intercept = intercept,
-                spatial = image@spatial, voxelSize = image@voxelSize, worldTransform = worldTransform(image),
-                spaceUnit = image@spaceUnit, timeUnit = image@timeUnit)
+                geometry = image@geometry)
 }
 
 #' @rdname packedImage
@@ -172,54 +149,22 @@ S7::method(dim, packedImage) <- function (x) x@dims
 S7::method(length, packedImage) <- function (x) prod(x@dims)
 
 S7::method(as.array, packedImage) <- function (x, ...)
-    array(unpackNarrow(x@values, x@storageType, prod(x@dims), x@slope, x@intercept), x@dims)
+    array(unpackNarrow(x@values, x@storageType, prod(x@dims), x@slope, x@intercept, x@dims, layoutArg(x)), x@dims)
 
 S7::method(print, packedImage) <- function (x, ...)
 {
     cat(sprintf("Packed image: %s (%s)\n", paste(x@dims, collapse = " x "), x@storageType))
-    if (x@spatial > 0L)
-    {
-        cat(sprintf("  Spatial dimensions : %s\n", paste(x@dims[seq_len(x@spatial)], collapse = " x ")))
-        cat(sprintf("  Voxel size         : %s %s\n",
-                    paste(signif(x@voxelSize, 4), collapse = " x "), ifelse(x@spaceUnit=="unknown", "(unit unknown)", x@spaceUnit)))
-    }
-    if (x@spatial < length(x@dims))
-        cat(sprintf("  Values per location: %d\n", prod(x@dims[-seq_len(x@spatial)])))
+    printGeometry(x@geometry)
+    if (spatial(x) < length(x@dims))
+        cat(sprintf("  Values per location: %d\n", prod(x@dims[-seq_len(spatial(x))])))
     if (x@slope != 1 || x@intercept != 0)
         cat(sprintf("  Scaling            : value = stored * %g + %g\n", x@slope, x@intercept))
     cat(sprintf("  Storage            : %s bytes, against %s as double\n",
                 format(length(x@values), big.mark = ","),
                 format(prod(x@dims) * 8, big.mark = ",")))
+    printLayout(x@layout)
 
     invisible(x)
-}
-
-## Indexing reads only the values asked for, rather than materialising the
-## image. As elsewhere the result is a plain array
-S7::method(`[`, packedImage) <- function (x, ..., drop = TRUE)
-{
-    indices <- as.list(substitute(list(...)))[-1L]
-    supplied <- length(indices)
-    absent <- vapply(indices, identical, NA, quote(expr = ))
-
-    if (supplied == 0L || all(absent))
-        return(as.array(x))
-
-    if (supplied == 1L)
-    {
-        i <- ..1
-        if (is.matrix(i) && ncol(i) == length(x@dims))
-            i <- flattenIndices(array(0L, x@dims), i)
-        else if (is.logical(i))
-            i <- which(i)
-        return(narrowElements(x@values, x@storageType, prod(x@dims), as.double(i),
-                              x@slope, x@intercept))
-    }
-
-    call <- sys.call()
-    call[[1L]] <- quote(`[`)
-    call[[2L]] <- as.array(x)
-    eval(call, parent.frame())
 }
 
 ## Summaries are accumulated in double whatever the storage type, so the
@@ -255,9 +200,7 @@ registerPackedMethods <- function ()
                 first <- if (isPackedImage(e1)) as.array(e1) else asComparable(e1)
                 second <- if (isPackedImage(e2)) as.array(e2) else asComparable(e2)
                 template <- if (isPackedImage(e1)) e1 else e2
-                denseImage(op(first, second), spatial = template@spatial, voxelSize = template@voxelSize,
-                           worldTransform = worldTransform(template), spaceUnit = template@spaceUnit,
-                           timeUnit = template@timeUnit)
+                denseImage(op(first, second), geometry = template@geometry)
             }
         })
 

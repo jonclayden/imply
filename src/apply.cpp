@@ -7,6 +7,7 @@
 #include "imply/Dispatch.h"
 #include "imply/RImage.h"
 #include "imply/Blocks.h"
+#include "imply/View.h"
 #include "imply/Sink.h"
 #include "imply/Sparse.h"
 #include "imply/Narrow.h"
@@ -27,22 +28,18 @@ const R_xlen_t interruptInterval = 100;
 // Rather than permuting the whole array into a fresh copy before looping, each
 // sub-array is gathered directly through the stride vector. Peak memory is
 // therefore the input plus the result
+//
+// The strides are the view's, so the function sees the image in its own axis
+// order however it happens to be stored
 template <typename Accessor, typename Tag>
-Rcpp::List applyImpl (const Accessor &source,
-                      const std::vector<Extent> &dims, const std::vector<int> &margin,
+Rcpp::List applyImpl (const Accessor &source, const ViewMap &view, const std::vector<int> &margin,
                       SEXP fun, SEXP callNames, const bool simplify,
                       const R_xlen_t from, const R_xlen_t to,
                       SEXP progress, const R_xlen_t reportEvery, Tag)
 {
+    const std::vector<Extent> &dims = view.dims;
+    const std::vector<Offset> &strides = view.strides;
     const int nDims = static_cast<int>(dims.size());
-
-    std::vector<Extent> strides(nDims);
-    Extent stride = 1;
-    for (int i=0; i<nDims; i++)
-    {
-        strides[i] = stride;
-        stride *= dims[i];
-    }
 
     std::vector<bool> retained(nDims, false);
     for (std::size_t i=0; i<margin.size(); i++)
@@ -50,7 +47,8 @@ Rcpp::List applyImpl (const Accessor &source,
 
     // Margin dimensions are taken in the order given, since that is the order
     // the result's dimensions will be in
-    std::vector<Extent> marginDims, marginStrides, callDims, callStrides;
+    std::vector<Extent> marginDims, callDims;
+    std::vector<Offset> marginStrides, callStrides;
     for (std::size_t i=0; i<margin.size(); i++)
     {
         marginDims.push_back(dims[margin[i]]);
@@ -113,7 +111,7 @@ Rcpp::List applyImpl (const Accessor &source,
     for (R_xlen_t k=0; k<nCalls; k++)
     {
         Rcpp::Vector<Tag::sexpType> sub(subSize);
-        gather(source, marginWalker.offset(), callWalker, sub.begin());
+        gather(source, view.base + marginWalker.offset(), callWalker, sub.begin());
         if (subHasDim)
         {
             sub.attr("dim") = subDim;
@@ -241,7 +239,7 @@ Rcpp::List applyOverMargin (Rcpp::RObject x, Rcpp::IntegerVector margin, Rcpp::F
     Rcpp::List result;
     dispatchType(x, [&](auto tag, auto *data) -> SEXP {
         typedef decltype(tag) Tag;
-        result = applyImpl(DenseAccessor<typename Tag::Type>(data), dims, margin0, fun, names, simplify,
+        result = applyImpl(DenseAccessor<typename Tag::Type>(data), ViewMap(dims), margin0, fun, names, simplify,
                            static_cast<R_xlen_t>(from), static_cast<R_xlen_t>(to),
                            reporter, static_cast<R_xlen_t>(reportEvery), tag);
         return R_NilValue;
@@ -260,18 +258,19 @@ Rcpp::List applyOverMarginPacked (Rcpp::RawVector values, std::string type, Rcpp
                                   Rcpp::Nullable<Rcpp::List> callNames = R_NilValue,
                                   bool simplify = true, double from = 0, double to = -1,
                                   Rcpp::Nullable<Rcpp::Function> progress = R_NilValue,
-                                  double reportEvery = 0)
+                                  double reportEvery = 0, SEXP layout = R_NilValue)
 {
     const std::vector<Extent> dims = dimsFrom(dim);
     const std::vector<int> margin0 = checkMargin(margin, static_cast<int>(dims.size()));
     SEXP names = (callNames.isNull() ? R_NilValue : SEXP(callNames.get()));
     SEXP reporter = (progress.isNull() ? R_NilValue : SEXP(progress.get()));
+    const ViewMap view(dims, layoutFrom(layout));
 
     Rcpp::List result;
     dispatchNarrowType(narrowTypeFromName(type), [&](auto stored) -> SEXP {
         typedef decltype(stored) Stored;
         result = applyImpl(NarrowAccessor<Stored>(values.begin(), slope, intercept),
-                           dims, margin0, fun, names, simplify,
+                           view, margin0, fun, names, simplify,
                            static_cast<R_xlen_t>(from), static_cast<R_xlen_t>(to),
                            reporter, static_cast<R_xlen_t>(reportEvery), RealTag());
         return R_NilValue;
@@ -288,12 +287,13 @@ Rcpp::List applyOverMarginSparse (Rcpp::RawVector mask, Rcpp::RObject values, Rc
                                   Rcpp::Nullable<Rcpp::List> callNames = R_NilValue,
                                   bool simplify = true, double from = 0, double to = -1,
                                   Rcpp::Nullable<Rcpp::Function> progress = R_NilValue,
-                                  double reportEvery = 0)
+                                  double reportEvery = 0, SEXP layout = R_NilValue)
 {
     const std::vector<Extent> dims = dimsFrom(dim);
     const std::vector<int> margin0 = checkMargin(margin, static_cast<int>(dims.size()));
     SEXP names = (callNames.isNull() ? R_NilValue : SEXP(callNames.get()));
     SEXP reporter = (progress.isNull() ? R_NilValue : SEXP(progress.get()));
+    const ViewMap view(dims, layoutFrom(layout));
 
     Extent locations = 1, elements = 1;
     for (int i=0; i<spatial; i++)
@@ -307,7 +307,7 @@ Rcpp::List applyOverMarginSparse (Rcpp::RawVector mask, Rcpp::RObject values, Rc
     dispatchType(values, [&](auto tag, auto *packed) -> SEXP {
         typedef decltype(tag) Tag;
         result = applyImpl(SparseAccessor<typename Tag::Type>(bits, packed, elements),
-                           dims, margin0, fun, names, simplify,
+                           view, margin0, fun, names, simplify,
                            static_cast<R_xlen_t>(from), static_cast<R_xlen_t>(to),
                            reporter, static_cast<R_xlen_t>(reportEvery), tag);
         return R_NilValue;

@@ -5,6 +5,7 @@
 \alias{isSparseImage}
 \alias{asSparse}
 \alias{maskedMatrix}
+\alias{storedValues}
 \alias{sparseness}
 \alias{mask}
 \title{Sparse images}
@@ -16,9 +17,9 @@ sparseImage(
   spatial = NULL,
   voxelSize = NULL,
   worldTransform = NULL,
-  spaceUnit = NULL,
-  timeUnit = NULL,
-  template = NULL
+  unit = NULL,
+  geometry = NULL,
+  layout = NULL
 )
 
 isSparseImage(x)
@@ -26,6 +27,8 @@ isSparseImage(x)
 asSparse(x, ...)
 
 maskedMatrix(x)
+
+storedValues(x)
 
 sparseness(x)
 
@@ -36,10 +39,15 @@ mask(x)
 
 \item{values}{Packed values, in location order.}
 
-\item{dim, spatial, voxelSize, worldTransform, spaceUnit, timeUnit}{Image
-geometry, as for \code{\link[=denseImage]{denseImage()}}.}
+\item{dim}{The full dimensions of the image.}
 
-\item{template}{An image to take unspecified geometry from.}
+\item{spatial, voxelSize, worldTransform, unit, geometry}{Image geometry, as
+for \code{\link[=denseImage]{denseImage()}}.}
+
+\item{layout}{How the image's axes map onto the stored order of locations,
+as described for \code{\link[=storageLayout]{storageLayout()}}. For a sparse image it may only
+reorder and reverse the spatial axes among themselves; the values held at
+each location are always stored in order. The default is the identity.}
 
 \item{x}{An image or array.}
 
@@ -55,14 +63,20 @@ is over \emph{locations}, not over individual values: a location is either
 present, in which case the whole vector of values held there is stored, or
 absent, in which case every one of them is implicitly zero. That generally
 matches the intent, and it keeps the stored values contiguous.
+
+\code{storedValues()} returns the values exactly as stored, never copying, along
+with the location of each column as a linear index into the image's own
+spatial grid. The two differ only for a reoriented image.
 }
 \details{
 The mask is one bit per location and the values are packed in location
 order, so finding a value costs a table lookup and a bit count rather than a
-search. A coordinate list, the other common representation, would store
-three or four indices alongside every value, and may cost more memory than
-saves at typical densities.
+search. A location holding \code{NA} is kept, since \code{NA} is not zero.
 
-A location holding \code{NA} is kept, since \code{NA} is not zero. Packing an image
-therefore loses nothing.
+A sparse image can be indexed and assigned to like an array. Assignment
+keeps the mask accurate: a location given a non-zero value is added, and one
+left holding only zeros is dropped. That takes a pass over the stored
+values each time, which suits occasional edits; to set many values, gather
+them and assign once, rather than one at a time in a loop. As for an array,
+values are promoted to a wider replacement type.
 }

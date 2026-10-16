@@ -8,6 +8,7 @@
 #include "imply/Dispatch.h"
 #include "imply/RImage.h"
 #include "imply/Blocks.h"
+#include "imply/View.h"
 #include "imply/Sparse.h"
 #include "imply/Narrow.h"
 #include "imply/Parallel.h"
@@ -161,26 +162,21 @@ void writeResult (const Accumulator &a, const Reduction what, const bool naRm,
 // replaced by an accumulator, which is what allows the loop to run on worker
 // threads
 template <typename Accessor>
-void reduceImpl (const Accessor &source, const std::vector<Extent> &dims,
+void reduceImpl (const Accessor &source, const ViewMap &view,
                  const std::vector<int> &margin, const Reduction what, const bool naRm,
                  const int threads, double * const out,
                  const Extent from, const Extent to)
 {
+    const std::vector<Extent> &dims = view.dims;
+    const std::vector<Offset> &strides = view.strides;
     const int nDims = static_cast<int>(dims.size());
-
-    std::vector<Extent> strides(nDims);
-    Extent stride = 1;
-    for (int i=0; i<nDims; i++)
-    {
-        strides[i] = stride;
-        stride *= dims[i];
-    }
 
     std::vector<bool> retained(nDims, false);
     for (std::size_t i=0; i<margin.size(); i++)
         retained[margin[i]] = true;
 
-    std::vector<Extent> marginDims, marginStrides, callDims, callStrides;
+    std::vector<Extent> marginDims, callDims;
+    std::vector<Offset> marginStrides, callStrides;
     for (std::size_t i=0; i<margin.size(); i++)
     {
         marginDims.push_back(dims[margin[i]]);
@@ -213,7 +209,7 @@ void reduceImpl (const Accessor &source, const std::vector<Extent> &dims,
 
         for (Extent k=first+begin; k<first+end; k++)
         {
-            const Offset base = margins.offset();
+            const Offset base = view.base + margins.offset();
             const Extent n = values.size();
 
             Accumulator a;
@@ -267,10 +263,11 @@ Extent callCount (const std::vector<Extent> &dims, const std::vector<int> &margi
 // Slabbing costs one parallel launch per slab, which is only worth paying when
 // there is enough work for it to disappear into the noise
 template <typename Accessor>
-void runReduction (const Accessor &source, const std::vector<Extent> &dims,
+void runReduction (const Accessor &source, const ViewMap &view,
                    const std::vector<int> &margin, const Reduction what, const bool naRm,
                    const int threads, double * const out)
 {
+    const std::vector<Extent> &dims = view.dims;
     const Extent nCalls = callCount(dims, margin);
     Extent total = 1;
     for (std::size_t i=0; i<dims.size(); i++)
@@ -280,14 +277,14 @@ void runReduction (const Accessor &source, const std::vector<Extent> &dims,
 
     if (slabs <= 1)
     {
-        reduceImpl(source, dims, margin, what, naRm, threads, out, 0, nCalls);
+        reduceImpl(source, view, margin, what, naRm, threads, out, 0, nCalls);
         return;
     }
 
     const Extent size = (nCalls + slabs - 1) / slabs;
     for (Extent from=0; from<nCalls; from+=size)
     {
-        reduceImpl(source, dims, margin, what, naRm, threads, out, from, std::min(from + size, nCalls));
+        reduceImpl(source, view, margin, what, naRm, threads, out, from, std::min(from + size, nCalls));
         Rcpp::checkUserInterrupt();
     }
 }
@@ -310,7 +307,7 @@ Rcpp::NumericVector reduceOverMargin (Rcpp::RObject x, Rcpp::IntegerVector margi
         if constexpr (Tag::kind == StorageType::complex)
             Rcpp::stop("Complex data are not supported by imreduce()");
         else
-            runReduction(DenseAccessor<typename Tag::Type>(data), dims, margin0, kind, naRm,
+            runReduction(DenseAccessor<typename Tag::Type>(data), ViewMap(dims), margin0, kind, naRm,
                          threads, result.begin());
         return R_NilValue;
     });
@@ -322,7 +319,7 @@ Rcpp::NumericVector reduceOverMargin (Rcpp::RObject x, Rcpp::IntegerVector margi
 Rcpp::NumericVector reduceOverMarginPacked (Rcpp::RawVector values, std::string type,
                                             Rcpp::IntegerVector dim, Rcpp::IntegerVector margin,
                                             std::string what, double slope = 1, double intercept = 0,
-                                            bool naRm = false, int threads = 0)
+                                            bool naRm = false, int threads = 0, SEXP layout = R_NilValue)
 {
     const std::vector<Extent> dims(dim.begin(), dim.end());
     const std::vector<int> margin0 = checkMargin(margin, static_cast<int>(dims.size()));
@@ -332,7 +329,7 @@ Rcpp::NumericVector reduceOverMarginPacked (Rcpp::RawVector values, std::string 
 
     dispatchNarrowType(narrowTypeFromName(type), [&](auto stored) -> SEXP {
         typedef decltype(stored) Stored;
-        runReduction(NarrowAccessor<Stored>(values.begin(), slope, intercept), dims, margin0, kind,
+        runReduction(NarrowAccessor<Stored>(values.begin(), slope, intercept), ViewMap(dims, layoutFrom(layout)), margin0, kind,
                      naRm, threads, result.begin());
         return R_NilValue;
     });
@@ -344,7 +341,7 @@ Rcpp::NumericVector reduceOverMarginPacked (Rcpp::RawVector values, std::string 
 Rcpp::NumericVector reduceOverMarginSparse (Rcpp::RawVector mask, Rcpp::RObject values,
                                             Rcpp::IntegerVector dim, int spatial,
                                             Rcpp::IntegerVector margin, std::string what,
-                                            bool naRm = false, int threads = 0)
+                                            bool naRm = false, int threads = 0, SEXP layout = R_NilValue)
 {
     const std::vector<Extent> dims(dim.begin(), dim.end());
     const std::vector<int> margin0 = checkMargin(margin, static_cast<int>(dims.size()));
@@ -364,7 +361,7 @@ Rcpp::NumericVector reduceOverMarginSparse (Rcpp::RawVector mask, Rcpp::RObject 
         if constexpr (Tag::kind == StorageType::complex)
             Rcpp::stop("Complex data are not supported by imreduce()");
         else
-            runReduction(SparseAccessor<typename Tag::Type>(bits, packed, elements), dims, margin0,
+            runReduction(SparseAccessor<typename Tag::Type>(bits, packed, elements), ViewMap(dims, layoutFrom(layout)), margin0,
                          kind, naRm, threads, result.begin());
         return R_NilValue;
     });

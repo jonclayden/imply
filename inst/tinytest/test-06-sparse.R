@@ -22,7 +22,8 @@ expect_true(isSparseImage(s))
 expect_false(isDenseImage(s))
 expect_equal(dim(s), c(8L, 8L, 4L))
 expect_equal(length(s), 256L)
-expect_equal(s@spatial, 3L)
+expect_equal(spatial(s), 3L)
+expect_identical(geometry(s), geometry(image))
 
 ## Packing loses nothing at all, missing values included
 expect_identical(as.array(s), dense)

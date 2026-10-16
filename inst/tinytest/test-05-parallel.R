@@ -59,7 +59,7 @@ for (nCalls in c(1L, 2L, 7L, 100L))
 {
     for (nChunks in c(1L, 2L, 3L, 8L, 50L))
     {
-        chunks <- imply:::callChunks(nCalls, nChunks)
+        chunks <- imply:::rangeChunks(0, nCalls, nChunks)
         starts <- vapply(chunks, `[`, numeric(1), 1L)
         ends <- vapply(chunks, `[`, numeric(1), 2L)
 

@@ -84,10 +84,6 @@ formatRate <- function (rate)
                           c("", "k", "M", "G", "T")[scale + 1L]))
 }
 
-## How often the compiled loop should call back. Around a hundred updates is
-## smooth without the callback itself becoming part of the cost
-reportInterval <- function (total) max(1L, as.integer(total %/% 100L))
-
 ## Contiguous zero-based half-open ranges covering [from, to)
 rangeChunks <- function (from, to, count)
 {

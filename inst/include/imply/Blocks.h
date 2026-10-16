@@ -16,22 +16,39 @@ namespace imply {
 // per step in the common case and allocates nothing. That is what allows a
 // sub-array to be gathered without first permuting the whole image the way
 // base::apply() does
+//
+// Strides are signed, so that an axis can be walked backwards. That is how a
+// view flips an axis without moving any data: the walk starts from a base
+// offset at the far end of that axis and steps back along it (see View.h)
 class OffsetWalker
 {
 protected:
-    std::vector<Extent> dims_, strides_, loc_;
+    std::vector<Extent> dims_, loc_;
+    std::vector<Offset> strides_;
     Offset offset_;
     Extent position_, total_;
 
-public:
-    OffsetWalker () : offset_(0), position_(0), total_(0) {}
-
-    OffsetWalker (const std::vector<Extent> &dims, const std::vector<Extent> &strides)
-        : dims_(dims), strides_(strides), loc_(dims.size(), 0), offset_(0), position_(0)
+    void initialise ()
     {
         total_ = 1;
         for (std::size_t i=0; i<dims_.size(); i++)
             total_ *= dims_[i];
+    }
+
+public:
+    OffsetWalker () : offset_(0), position_(0), total_(0) {}
+
+    OffsetWalker (const std::vector<Extent> &dims, const std::vector<Offset> &strides)
+        : dims_(dims), loc_(dims.size(), 0), strides_(strides), offset_(0), position_(0)
+    {
+        initialise();
+    }
+
+    // Unsigned strides, as for an array walked in its own memory order
+    OffsetWalker (const std::vector<Extent> &dims, const std::vector<Extent> &strides)
+        : dims_(dims), loc_(dims.size(), 0), strides_(strides.begin(), strides.end()), offset_(0), position_(0)
+    {
+        initialise();
     }
 
     // The number of positions visited, which is one for an empty dimension set
@@ -63,7 +80,7 @@ public:
                 continue;
             }
             loc_[i] = remainder % dims_[i];
-            offset_ += static_cast<Offset>(loc_[i] * strides_[i]);
+            offset_ += static_cast<Offset>(loc_[i]) * strides_[i];
             remainder /= dims_[i];
         }
     }
@@ -76,13 +93,13 @@ public:
 
         for (std::size_t i=0; i<dims_.size(); i++)
         {
-            offset_ += static_cast<Offset>(strides_[i]);
+            offset_ += strides_[i];
             if (++loc_[i] < dims_[i])
                 return true;
 
             // This dimension has wrapped, so rewind it and carry
             loc_[i] = 0;
-            offset_ -= static_cast<Offset>(dims_[i] * strides_[i]);
+            offset_ -= static_cast<Offset>(dims_[i]) * strides_[i];
         }
 
         return true;

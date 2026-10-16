@@ -16,9 +16,9 @@ packedImage(
   spatial = NULL,
   voxelSize = NULL,
   worldTransform = NULL,
-  spaceUnit = NULL,
-  timeUnit = NULL,
-  template = NULL
+  unit = NULL,
+  geometry = NULL,
+  layout = NULL
 )
 
 isPackedImage(x)
@@ -30,13 +30,17 @@ storageType(x)
 \arguments{
 \item{values}{A raw vector holding the packed values.}
 
-\item{dims, spatial, voxelSize, worldTransform, spaceUnit, timeUnit}{Image
-geometry, as for \code{\link[=denseImage]{denseImage()}}.}
+\item{dims}{The full dimensions of the image.}
 
 \item{slope, intercept}{Scaling applied to stored values. Chosen
 automatically when not given.}
 
-\item{template}{An image to take unspecified geometry from.}
+\item{spatial, voxelSize, worldTransform, unit, geometry}{Image geometry, as
+for \code{\link[=denseImage]{denseImage()}}.}
+
+\item{layout}{How the image's axes map onto the order of \code{values}, as
+described for \code{\link[=storageLayout]{storageLayout()}}. The default is the identity, meaning
+that \code{values} are in the image's own axis order.}
 
 \item{x}{An image or array.}
 
@@ -64,6 +68,13 @@ whole of the type's range.
 
 The values live in a raw vector, so they are garbage-collected, serialise,
 and survive a save and load like any other R object.
+
+A packed image can be indexed and assigned to like an array, reading and
+writing only the values concerned. Assigned values are stored under the
+image's existing type and scaling, and so rounded to its resolution; a
+value the scaling cannot reach, or a missing value in an integer type, is
+an error, since rescaling to fit would change every other value too. Use
+\code{\link[=asDense]{asDense()}}, or repack with \code{asPacked()}, to store such values.
 }
 \note{
 Missing values can only be carried by \code{float32}; packing data

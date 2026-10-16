@@ -47,8 +47,8 @@ expect_equal(voxelSize(slices), c(1, 1))
 expect_error(denseImage(array(0, c(2, 2)), spatial = 3L), "between 0 and 2")
 expect_error(denseImage(array(0, c(2, 2, 2)), voxelSize = c(1, 1)), "one element per spatial dimension")
 
-## The compiled side reads the split straight off the attribute, so the class
-## and the raster agree without any S7 knowledge in C++
+## The compiled side reads the split off the geometry's attributes, so the
+## class and the raster agree without any S7 knowledge in C++
 expect_equal(imply:::rasterInfo(slices)$spatial, 2L)
 expect_equal(imply:::rasterInfo(slices)$elementSize, 6)
 expect_equal(imply:::rasterInfo(series)$elementSize, 10)
@@ -86,19 +86,33 @@ expect_equal(voxelSize(image), c(2, 2, 2))
 expect_error(worldTransform(image) <- diag(3), "4x4")
 expect_error(voxelSize(image) <- c(1, 1), "one element per spatial dimension")
 
-## A template supplies whatever is not given explicitly
-copy <- denseImage(array(1, c(10L, 10L, 10L)), template = image)
+## A geometry, or an image to take one from, supplies whatever is not given
+## explicitly, and must describe the same grid as the data
+copy <- denseImage(array(1, c(10L, 10L, 10L)), geometry = image)
 expect_equal(worldTransform(copy), worldTransform(image))
 expect_equal(voxelSize(copy), voxelSize(image))
+expect_identical(geometry(copy), geometry(image))
+copy <- denseImage(array(1, c(10L, 10L, 10L)), geometry = geometry(image), voxelSize = c(1, 1, 1))
+expect_equal(voxelSize(copy), c(1, 1, 1))
+expect_equal(worldTransform(copy)[1:3, 4], las[1:3, 4])
+expect_error(denseImage(array(1, c(10L, 10L, 8L)), geometry = image), "grid of 10 x 10 x 10")
+
+## The geometry determines the spatial split, so an image with extra trailing
+## dimensions can take the geometry of one without them
+series2 <- denseImage(array(1, c(10L, 10L, 10L, 5L)), geometry = image)
+expect_equal(spatial(series2), 3L)
+expect_equal(worldTransform(series2), worldTransform(image))
 
 ## --- S7 properties ---------------------------------------------------------
 
-## Properties are readable through @, and are stored as ordinary attributes so
-## that compiled code needs no knowledge of S7
-expect_equal(x@spatial, 3L)
-expect_equal(x@voxelSize, c(1, 1, 1))
-expect_equal(attr(x, "voxelSize"), x@voxelSize)
-expect_equal(attr(x, "spatial"), x@spatial)
+## The geometry is a property of its own, readable through @, and is stored as
+## an ordinary attribute so that compiled code needs no knowledge of S7
+expect_true(isImageGeometry(x@geometry))
+expect_identical(x@geometry, geometry(x))
+expect_equal(x@geometry@dims, c(2L, 3L, 4L))
+expect_equal(x@geometry@voxelSize, c(1, 1, 1))
+expect_identical(attr(x, "geometry"), x@geometry)
+expect_equal(attr(attr(x, "geometry"), "dims"), c(2L, 3L, 4L))
 
 ## S7 qualifies the class name with the package, so a bare inherits() test
 ## fails. This is exactly why isDenseImage() exists
@@ -106,20 +120,27 @@ expect_equal(class(x)[1], "imply::denseImage")
 expect_false(inherits(x, "denseImage"))
 expect_true(isDenseImage(x))
 
-## The validator runs on assignment, not merely at construction
+## The validators run on assignment, not merely at construction: both the
+## geometry's own and the image's, which checks the grid against the data
 bad <- x
-expect_error({bad@voxelSize <- c(1, 1)}, "one element per spatial dimension")
-expect_error({bad@orientation <- diag(3)}, "4x4")
-expect_error({bad@spatial <- 9L}, "between 0 and 3")
-expect_error({bad@voxelSize <- c(1, NA, 1)}, "must not be missing")
-expect_error({bad@voxelSize <- c(-1, 1, 1)}, "strictly positive")
-expect_error({bad@orientation <- sheared}, "rigid")
+expect_error({bad@geometry@voxelSize <- c(1, 1)}, "one element per spatial dimension")
+expect_error({bad@geometry@orientation <- diag(3)}, "4x4")
+expect_error({bad@geometry@voxelSize <- c(1, NA, 1)}, "must not be missing")
+expect_error({bad@geometry@voxelSize <- c(-1, 1, 1)}, "strictly positive")
+expect_error({bad@geometry@orientation <- sheared}, "rigid")
+expect_error({bad@geometry <- imageGeometry(c(2L, 3L, 5L))}, "does not match")
+expect_error({bad@geometry <- imageGeometry(c(2L, 3L, 4L, 1L, 1L))}, "only 3")
+expect_error({bad@geometry <- diag(4)}, "imageGeometry")
 
-## ...and a valid assignment goes through
+## ...and a valid assignment goes through, including one that changes the
+## spatial split
 good <- x
-good@voxelSize <- c(2, 2, 2)
-expect_equal(good@voxelSize, c(2, 2, 2))
+good@geometry@voxelSize <- c(2, 2, 2)
+expect_equal(voxelSize(good), c(2, 2, 2))
 expect_true(isDenseImage(good))
+geometry(good) <- imageGeometry(c(2L, 3L), voxelSize = c(3, 3))
+expect_equal(spatial(good), 2L)
+expect_equal(imply:::rasterInfo(good)$spatial, 2L)
 
 ## --- Subsetting ------------------------------------------------------------
 
@@ -148,9 +169,8 @@ expect_equal(dim(replaced), dim(x))
 
 plain <- as.array(x)
 expect_false(isDenseImage(plain))
-expect_null(attr(plain, "voxelSize"))
-expect_null(attr(plain, "orientation"))
-expect_null(attr(plain, "spatial"))
+expect_null(attr(plain, "geometry"))
+expect_identical(names(attributes(plain)), "dim")
 expect_equal(dim(plain), dim(x))
 expect_equal(as.vector(plain), as.vector(x))
 
