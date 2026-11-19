@@ -1,9 +1,10 @@
 Package: imply
-Version: 0.1.0
-Date: 2026-09-05
+Version: 0.2.0
+Date: 2026-11-19
 Title: Efficiently Apply Functions to Images
 Authors@R: c(person("Jon", "Clayden", role=c("cre","aut"),
-    email="code@clayden.org", comment=c(ORCID="0000-0002-6608-0619")))
+    email="code@clayden.org", comment=c(ORCID="0000-0002-6608-0619")),
+	person("Tomasz", "Kalinowski", role="ctb"))
 Description: Infrastructure for handling generalised two and three dimensional
 	images, which may hold multiple values at each spatial location, and
 	efficiently applying functions to them. Dense, compacted and sparse
@@ -18,5 +19,5 @@ Encoding: UTF-8
 License: BSD_3_clause + file LICENCE
 URL: https://github.com/jonclayden/imply
 BugReports: https://github.com/jonclayden/imply/issues
-Config/roxygen2/version: 8.1.0
+Config/roxygen2/version: 8.1.1
 Config/roxygen2/markdown: TRUE

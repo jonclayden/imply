@@ -9,8 +9,7 @@ set.seed(1)
 
 The `imply` package provides data structures for *generalised images* – two- or three-dimensional rasters that may hold a vector or time series at each location rather than a single intensity — together with infrastructure for applying functions to them in a memory-efficient and optionally parallelised fashion. The primary use case is medical imaging, but nothing in the package assumes this explicitly. The name is a portmanteau of "image" and "apply", and follows in the footsteps of influential packages like [`plyr`](https://cran.r-project.org/package=plyr).
 
-This is a general infrastructure package that has no dependency on any specific file format, although there is support for image geometry characteristics such as pixel/voxel sizes and transforms to represent a real-world spatial embedding. Reading, writing and interoperating with other image classes is largely out of scope,
-and left to packages that sit above this one.
+This is a general infrastructure package that has no dependency on any specific file format, although there is support for image geometry characteristics such as pixel/voxel sizes and transforms to represent a real-world spatial embedding. Parsing file formats, and interoperating with other image classes, are out of scope, and left to more specialised packages.
 
 There is also no viewer, as conventions vary by application. [`RNifti::view()`](https://cran.r-project.org/package=RNifti) is one option for medical images; the standard `image()`, or [`mmand::display()`](https://cran.r-project.org/package=mmand), can be used for typical 2D bitmaps.
 
@@ -23,7 +22,13 @@ Key features include
 - easy [parallelism](#parallelism) using the standard `parallel` package, libdispatch (a.k.a. Grand Central Dispatch) or OpenMP, plus progress reporting; and
 - a [C++ API](#c-api) exposing its core engine to other packages.
 
-The package is in an early stage of development, and its interface may change in subsequent releases. The latest version of the package can be installed from GitHub using the `remotes` package:
+The package is in an early stage of development, and its interface may change in subsequent releases. The current release can be installed from CRAN:
+
+```{r, eval=FALSE}
+install.packages("imply")
+```
+
+The latest development version can be installed from GitHub using the `remotes` package:
 
 ```{r, eval=FALSE}
 ## install.packages("remotes")
@@ -111,6 +116,8 @@ unpacked <- asDense(packed)
 range(as.array(unpacked) - as.array(image)) # narrowing loses some precision, but very little
 ```
 
+Sparse and packed images can also be indexed directly, without being unpacked. `[` reads only the values asked for and returns a plain array, as for a dense image. `[<-` writes into the image in its own representation: a packed image keeps its existing scaling and refuses a value it cannot represent, rather than rescaling everything, and a sparse image adds or drops locations so that its mask stays accurate.
+
 `storageType()` reports `"double"`, `"integer"` and so on for anything that is not a packed image, and the packed type otherwise, so it can be used without first checking which kind of image is in hand. `isDenseImage()`, `isSparseImage()` and `isPackedImage()` (and the umbrella `isImage()`) are the best way to test for image types.
 
 ```{r}
@@ -178,7 +185,7 @@ sliceMeans # likewise one value per slice, placed at the centre of each slice
 as.vector(sliceMeans)
 ```
 
-`voxelApply()` accepts a `mask` – a logical array, a sparse image, or any numeric array where non-zero elements are selected — and visits only those locations, leaving `fill` (`0` by default) everywhere else. The loop runs over a packed matrix of just the selected columns.
+`voxelApply()` accepts a `mask` – a logical array, an image, or any numeric array where non-zero elements are selected — and visits only those locations, leaving `fill` (`0` by default) everywhere else. The loop runs over a packed matrix of just the selected columns.
 
 ```{r}
 masked <- voxelApply(image, mean, mask = sparse)
@@ -240,6 +247,8 @@ The pieces most likely to be wanted from outside are as follows.
 - **`dispatchType`**, **`dispatchNarrowType`** and **`dispatchDims`** — the R-boundary switches from a runtime `SEXP`'s storage mode (or dimensionality) to a compile-time type tag, meant to be called exactly once per entry point so that everything below it is fully typed.
 - **`DenseAccessor`**, **`SparseAccessor`** and **`NarrowAccessor`**, plus **`LocationMask`** — an `operator[]` over a plain pointer, a masked and packed array, or narrow storage, respectively, sharing one interface so that a kernel written against it serves all three without modification.
 - **`Sink`**, **`VectorSink`**, **`TypedSink`** and **`ListSink`** — preallocated result accumulation for a per-call loop, falling back to a list only once a result turns out not to fit a plain vector.
+- **`ViewMap`** — how an image's axes map onto its storage, as signed strides and a base offset. This is what lets a packed or sparse image be reoriented without moving any data, and it is what the engines take in place of computing strides themselves.
+- **`StrideIterator`** — a random-access iterator over a strided run of values, for handing a line of a dense image straight to a standard algorithm rather than gathering it into a buffer first.
 
 A kernel that sums a numeric vector, written once against the shared accessor interface, therefore works whether the underlying storage is a plain R vector or something more compact. For example
 

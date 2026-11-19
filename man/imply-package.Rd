@@ -22,6 +22,7 @@ Useful links:
 Authors:
 \itemize{
   \item Jon Clayden \email{code@clayden.org} (\href{https://orcid.org/0000-0002-6608-0619}{ORCID})
+  \item Tomasz Kalinowski
 }
 
 }
