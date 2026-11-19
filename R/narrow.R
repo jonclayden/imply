@@ -96,8 +96,6 @@ packedImage <- S7::new_class("packedImage",
             geometry = resolveGeometry(dims, spatial, voxelSize, worldTransform, unit, geometry))
     })
 
-S7::S4_register(packedImage)
-
 #' @rdname packedImage
 #' @export
 isPackedImage <- function (x) S7::S7_inherits(x, packedImage)
@@ -210,6 +208,18 @@ registerPackedMethods <- function ()
         S7::`method<-`(generic, list(packedImage, denseImage), handler)
         S7::`method<-`(generic, list(denseImage, packedImage), handler)
     }
+
+    for (name in c("+", "-"))
+    {
+        generic <- get(name, baseenv())
+        handler <- local({
+            op <- generic
+            function (e1, e2) denseImage(op(as.array(e1)), geometry = e1@geometry)
+        })
+        S7::`method<-`(generic, list(packedImage, S7::class_missing), handler)
+    }
+    S7::`method<-`(base::`!`, packedImage,
+                   function (e1) denseImage(!as.array(e1), geometry = e1@geometry))
 
     invisible(NULL)
 }

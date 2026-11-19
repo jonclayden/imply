@@ -86,8 +86,6 @@ storageDescriptor <- S7::new_class("storageDescriptor",
             bitOrder = as.character(bitOrder))
     })
 
-S7::S4_register(storageDescriptor)
-
 S7::method(print, storageDescriptor) <- function (x, ...)
 {
     cat(sprintf("Storage descriptor: %s, %s-endian, from byte %s\n", x@type, x@endian, format(x@offset)))

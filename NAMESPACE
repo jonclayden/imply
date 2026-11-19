@@ -46,7 +46,6 @@ export(worldAxes)
 export(worldTransform)
 export(writeImageData)
 importFrom(Rcpp,sourceCpp)
-importFrom(methods,setMethod)
 importFrom(stats,
   sd,
   var
