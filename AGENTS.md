@@ -8,7 +8,7 @@ The package deliberately sits **below** the existing R imaging stack: it has no 
 
 **Repository:** `jonclayden/imply` (BSD-3-Clause)
 
-Dependencies are kept tight: `Rcpp` and `S7` (>= 1.0.0) in Imports; `RcppArray` additionally in LinkingTo; `tinytest` in Suggests.
+Dependencies are kept tight: `Rcpp` and `S7` (>= 1.0.0) in Imports; `RcppArray` additionally in LinkingTo; `tinytest` in Suggests. `Depends: R (>= 4.2.0)` is S7 1.0's own floor, and an R 4.2-era toolchain has C++17.
 
 ## Building and testing
 
@@ -103,14 +103,14 @@ Consequences that are easy to get wrong:
 
 All of these were found the hard way:
 
-- **Class names are package-qualified.** `class(x)[1]` is `"imply::denseImage"`, so `inherits(x, "denseImage")` is `FALSE` and **no S3 method dispatches**. Use `isDenseImage()` / `isSparseImage()` / `isPackedImage()`, and register methods with `S7::method()`.
+- **Class names are package-qualified.** `class(x)[1]` is `"imply::denseImage"`, so `inherits(x, "denseImage")` is `FALSE` and **no S3 method dispatches**. Use `isDenseImage()` / `isSparseImage()` / `isPackedImage()`, and register methods with `S7::method()`. Passing the class object, as in `inherits(x, denseImage)`, works only on R >= 4.3 (it needs `nameOfClass()`), so it is not an option while R 4.2 is supported.
 - **`S7::S7_on_load()` must be called in `.onLoad`**, or methods are recorded but never activated — silently. `print` just falls through to the array method. `S7_on_unload()` in `.onUnload` undoes it, and `S7_on_build()` at the top level of `zzz.R` removes the placeholder bindings that `method(print, …) <-` and friends leave in the namespace; it must run after every top-level registration, so `zzz.R` must collate last.
-- **The `Ops` group generic cannot be dispatched on** usefully. The 15 binary operators are registered individually across several signatures, generated programmatically via `` S7::`method<-` `` in `registerSparseMethods()` and `registerPackedMethods()`.
+- **The `Ops` group generic cannot be dispatched on** usefully. S7 1.0 has no group-generic API of its own: `method(Ops, …)` and `method(Math, …)` treat `Ops` and `Math` as S4 group generics and demand `S4_register()`, which is not possible here (see below). The 15 binary operators are registered individually across several signatures, generated programmatically via `` S7::`method<-` `` in `registerSparseMethods()` and `registerPackedMethods()`.
 - **Unary `+` and `-` are registered on `list(class, S7::class_missing)`**, and `!` on the class alone, with the formal `e1` rather than base's `x`.
 - **Never strip S7's attributes by hand.** S7 1.0 renamed its bookkeeping attributes (`_S7_class`, `_S7_version`), and a hand-written list silently left one behind on every `as.array()`. Use `S7::S7_data()`.
 - **`dims` is kept as a property name**, although S7 1.0 allows `dim`, because a property named `dim` is stored as the attribute `_dim`, which C++ would then have to know about, and `x@dim` alongside `dim(x)` invites confusion.
 - **Unions cannot be parents**, which is why `denseImage` has the `array` S3 class as its parent rather than `class_double` — otherwise every image would be forced to one storage mode.
-- **Do not call `S4_register()`**. Nothing here needs it, and in S7 1.0 it maps properties onto S4 slots, which fails outright for a union-typed property such as `sparseImage@values`.
+- **Do not call `S4_register()`**. Nothing here needs it, and in S7 1.0 it fails for two of the four classes: `denseImage`, because its `array` data part clashes with the S4 prototype, and `sparseImage`, because its union-typed `values` property would need the union itself registered with S4 first.
 
 ## A build trap worth remembering
 
@@ -132,4 +132,3 @@ Do not put real `SIGINT` raising in the suite — it kills the test process. Int
 - Format adapters (NIfTI, ANALYZE, MGH, MRtrix) belong in the separate `imply.neuro` package, not here.
 - Interleaved (voxel-major) storage for dense images is designed for — the container carries general strides — but not implemented. Benchmark before adding: blocked traversal already recovers most of the benefit for whole-image sweeps.
 - `imreduce()` has no `progress` argument, since its loop runs on worker threads.
-- `DESCRIPTION` requires `S7 (>= 0.2.2.9000)`, the development version, until S7 1.0.0 is on CRAN; bump it to `>= 1.0.0` before release. `Depends: R (>= 4.2.0)` is S7 1.0's own floor, and an R 4.2-era toolchain has C++17.

@@ -11,7 +11,7 @@ Description: Infrastructure for handling generalised two and three dimensional
 	processing them all. Parallelism is supported via the 'parallel' package,
 	'libdispatch' and 'OpenMP'.
 Depends: R (>= 4.2.0)
-Imports: Rcpp, S7 (>= 0.2.2.9000)
+Imports: Rcpp, S7 (>= 1.0.0)
 LinkingTo: Rcpp, RcppArray
 Suggests: tinytest
 Encoding: UTF-8
